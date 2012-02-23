@@ -232,7 +232,7 @@ class WARCFile:
 def open(filename, mode="rb"):
     """Shorthand for WARCFile(filename, mode).
     """
-    return WARCReader(filename, mode)
+    return WARCFile(filename, mode)
 
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
