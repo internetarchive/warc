@@ -1,13 +1,11 @@
-WARC
-====
+warc: Python library to work with WARC files
+============================================
 
 WARC (Web ARChive) is a file format for storing web crawls.
 
 http://www.scribd.com/doc/4303719/WARC-ISO-28500-final-draft-v018-Zentveld-080618
 
-This is a python library for reading and writing WARC files.
-
-It makes read and writing WARC files very easy.
+The `warc` library makes it very easy to work with MARC files.
 
     import warc
     f = warc.open("test.warc")

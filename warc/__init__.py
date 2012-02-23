@@ -2,7 +2,7 @@
 warc
 ~~~~
 
-Library to read and write WARC files.
+Python library to work with WARC files.
 
 :copyright: (c) 2012 by Anand Chitipothu.
 """
