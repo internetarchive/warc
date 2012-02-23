@@ -57,7 +57,7 @@ class WARCHeader(CaseInsensitiveDict):
     
         * h.record_id == h['WARC-Record-ID']
         * h.content_length == int(h['Content-Length'])
-        * h.data == h['WARC-Date']
+        * h.date == h['WARC-Date']
         * h.type == h['WARC-Type']
         
     :params headers: dictionary of headers. 
@@ -149,12 +149,15 @@ class WARCHeader(CaseInsensitiveDict):
 class WARCRecord:
     """The WARCRecord object represents a WARC Record.
     """
-    def __init__(self, header=None, payload=None,  **headers):
+    def __init__(self, header=None, payload=None,  headers={}):
         """Creates a new WARC record. 
         """
         self.header = header or WARCHeader(headers, defaults=True)
-        self.header['Content-Length'] = str(len(payload))
         self.payload = payload
+        if payload:
+            self.header['Content-Length'] = str(len(payload))
+        else:
+            self.header['Content-Length'] = "0"
         
     def write_to(self, f):
         self.header.write_to(f)
@@ -202,9 +205,12 @@ class WARCRecord:
 
         # Build the payload to create warc file.
         payload = status_line + "\r\n" + headers + "\r\n" + body
-        target_uri = response.request.full_url.encode('utf-8')
         
-        return WARCRecord("response", payload=payload, target_uri=target_uri)
+        headers = {
+            "WARC-Type": "response",
+            "WARC-Target-URI": response.request.full_url.encode('utf-8')
+        }
+        return WARCRecord(payload=payload, headers=headers)
 
 class WARCFile:
     def __init__(self, filename=None, mode=None, fileobj=None):
