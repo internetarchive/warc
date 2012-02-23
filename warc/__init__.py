@@ -255,7 +255,8 @@ class WARCReader:
             raise IOError("Not supported WARC version: %s" % version)
             
         headers = {}
-        for line in self.fileobj:
+        while True:
+            line = self.fileobj.readline()
             if line == "\r\n": # end of headers
                 break
             m = self.RE_HEADER.match(line)
