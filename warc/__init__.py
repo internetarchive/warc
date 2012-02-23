@@ -7,13 +7,12 @@ Library to read and write WARC files.
 :copyright: (c) 2012 by Anand Chitipothu.
 """
 
+import __builtin__
 import datetime
 import uuid
-from cStringIO import StringIO
-import lxml.html
-import urllib
 import logging
 import re
+from cStringIO import StringIO
 from UserDict import DictMixin
 
 class CaseInsensitiveDict(DictMixin):
@@ -210,7 +209,7 @@ class WARCRecord:
 class WARCFile:
     def __init__(self, filename=None, mode=None, fileobj=None):
         if fileobj is None:
-            fileobj = open(filename, mode or "r")
+            fileobj = __builtin__.open(filename, mode or "rb")
         self.fileobj = fileobj
     
     def write(self, warc_record):
@@ -218,8 +217,22 @@ class WARCFile:
         """
         warc_record.write_to(self.fileobj)
         
+    def read(self):
+        """Reads a warc record from this WARC file."""
+        reader = WARCReader(fileobj)
+        return reader.read_record()
+        
+    def __iter__(self):
+        reader = WARCReader(fileobj)
+        return iter(reader)
+        
     def close(self):
         self.fileobj.close()
+        
+def open(filename, mode="rb"):
+    """Shorthand for WARCFile(filename, mode).
+    """
+    return WARCReader(filename, mode)
 
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
