@@ -219,11 +219,11 @@ class WARCFile:
         
     def read(self):
         """Reads a warc record from this WARC file."""
-        reader = WARCReader(fileobj)
+        reader = WARCReader(self.fileobj)
         return reader.read_record()
         
     def __iter__(self):
-        reader = WARCReader(fileobj)
+        reader = WARCReader(self.fileobj)
         return iter(reader)
         
     def close(self):

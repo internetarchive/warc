@@ -1,4 +1,5 @@
-from . import WARCReader, WARCHeader, CaseInsensitiveDict
+from . import WARCReader, WARCHeader, CaseInsensitiveDict, WARCFile
+
 from StringIO import StringIO
 
 class TestCaseInsensitiveDict:
@@ -67,6 +68,19 @@ class TestWARCHeader:
         assert f("request")["Content-Type"] == "application/http; msgtype=request"
         assert f("warcinfo")["Content-Type"] == "application/warc-fields"
         assert f("newtype")["Content-Type"] == "application/octet-stream"
+
+SAMPLE_WARC_RECORD_TEXT = (
+    "WARC/1.0\r\n" +
+    "Content-Length: 10\r\n" +
+    "WARC-Date: 2012-02-10T16:15:52Z\r\n" +
+    "Content-Type: application/http; msgtype=response\r\n" +
+    "WARC-Type: response\r\n" +
+    "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n" +
+    "WARC-Target-URI: http://example.com/\r\n" +
+    "\r\n" +
+    "Helloworld" +
+    "\r\n\r\n"
+)
 
 class TestWARCReader:
     def test_read_header1(self):
@@ -138,6 +152,12 @@ class TestWARCReader:
         f = StringIO(text * 5)
         # test __iter__
         assert len(list(f)) == 5
+        
+class TestWarcFile:
+    def test_read(self):
+        f = WARCFile(fileobj=StringIO(SAMPLE_WARC_RECORD_TEXT))
+        assert f.read() is not None
+        assert f.read() is None
     
 if __name__ == '__main__':
     TestWARCReader().test_read_header()
