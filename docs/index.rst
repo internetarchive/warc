@@ -155,3 +155,10 @@ There is a handy utility to create WARCRecord from a :class:`requests.Response` 
     {
       "user-agent": "python-requests/0.10.1"
     }
+
+License
+-------
+
+The warc library is licensed under the BSD 3-clause license. See LICENSE_ file for details.
+
+.. _LICENSE: http://github.com/kennethreitz/requests/blob/master/LICENSE.rst
