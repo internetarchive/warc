@@ -12,6 +12,7 @@ setup(
     url="http://github.com/anandology/warc",
     packages=["warc"],
     platforms=["any"],
+    package_data={'': ['LICENSE']},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
