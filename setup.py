@@ -13,6 +13,8 @@ setup(
     url="http://github.com/anandology/warc",
     packages=["warc"],
     platforms=["any"],
+    package_data={'': ["LICENSE", "Readme.rst"]},
+    include_package_data=True,
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
