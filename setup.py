@@ -6,7 +6,7 @@ setup(
     name="warc",
     version="0.1",
     description="Python library to work with WARC files",
-    long_description=open('README.rst').read(),
+    long_description=open('Readme.rst').read(),
     license='BSD',
     author="Anand Chitipothu",
     author_email="anandology@gmail.com",
