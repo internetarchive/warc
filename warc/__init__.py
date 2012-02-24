@@ -117,6 +117,9 @@ class WARCHeader(CaseInsensitiveDict):
             f.write(": ")
             f.write(value)
             f.write("\r\n")
+        
+        # Header ends with an extra CRLF
+        f.write("\r\n")
 
     @property
     def content_length(self):
@@ -161,7 +164,6 @@ class WARCRecord:
         
     def write_to(self, f):
         self.header.write_to(f)
-        f.write("\r\n")
         f.write(self.payload)
         f.write("\r\n")
         f.write("\r\n")

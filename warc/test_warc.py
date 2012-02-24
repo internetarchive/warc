@@ -45,12 +45,12 @@ class TestWARCHeader:
         
     def test_str(self):
         h = WARCHeader({})
-        assert str(h) == "WARC/1.0\r\n"
+        assert str(h) == "WARC/1.0\r\n\r\n"
 
         h = WARCHeader({
             "WARC-Type": "response"
         })
-        assert str(h) == "WARC/1.0\r\n" + "WARC-Type: response\r\n"
+        assert str(h) == "WARC/1.0\r\n" + "WARC-Type: response\r\n\r\n"
         
     def test_init_defaults(self):
         # It should initialize all the mandatory headers
