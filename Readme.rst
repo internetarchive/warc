@@ -5,7 +5,7 @@ WARC (Web ARChive) is a file format for storing web crawls.
 
 http://www.scribd.com/doc/4303719/WARC-ISO-28500-final-draft-v018-Zentveld-080618
 
-The `warc` library makes it very easy to work with WARC files.
+This `warc` library makes it very easy to work with WARC files.::
 
     import warc
     f = warc.open("test.warc")
@@ -20,6 +20,6 @@ The documentation of the warc library is available at http://readthedocs.org/doc
 License
 -------
 
-This software is licensed under the BSD 3-clause license. See [LICENSE][] file for details.
+This software is licensed under the BSD 3-clause license. See LICENSE_ file for details.
 
-[LICENSE]: http://github.com/anandology/warc/blob/master/LICENSE
+.. LICENSE: http://github.com/anandology/warc/blob/master/LICENSE
