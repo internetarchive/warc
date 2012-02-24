@@ -12,4 +12,7 @@ The `warc` library makes it very easy to work with WARC files.
     for record in f:
         print record['WARC-Target-URI'], record['Content-Length']
 
-[Read more...](docs/index.rst).
+Documentation
+-------------
+
+The documentation of the warc library is available at http://readthedocs.org/docs/warc/en/latest/
