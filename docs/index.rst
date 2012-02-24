@@ -40,6 +40,7 @@ Reading a warc file is as simple as reading a simple file. Instead of returning 
 
 ::
 
+    import warc
     f = warc.open("test.warc")
     for record in f:
         print record['WARC-Target-URI'], record['Content-Length']
@@ -54,7 +55,7 @@ Writing WARC File
 
 Writing to a warc file is similar to writing to a regular file.::
 
-    f = open("test.warc", "w")
+    f = warc.open("test.warc", "w")
     f.write(warc_record1)
     f.write(warc_record2)
     f.close()
