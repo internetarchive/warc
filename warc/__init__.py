@@ -4,7 +4,7 @@ warc
 
 Python library to work with WARC files.
 
-:copyright: (c) 2012 by Anand Chitipothu.
+:copyright: (c) 2012 Internet Archive
 """
 
 import __builtin__

@@ -20,6 +20,6 @@ The documentation of the warc library is available at http://readthedocs.org/doc
 License
 -------
 
-This software is licensed under the BSD 3-clause license. See LICENSE_ file for details.
+This software is licensed under GPL v2. See LICENSE_ file for details.
 
 .. LICENSE: http://github.com/anandology/warc/blob/master/LICENSE
