@@ -23,7 +23,7 @@ Installing warc is simple with `pip <http://www.pip-installer.org/>`_::
 	
 or, with `easy_install <http://pypi.python.org/pypi/setuptools>`_::
 
-    $ easy_install requests
+    $ easy_install warc
 
 Or you can get the sources by cloning the public git repository::
 
