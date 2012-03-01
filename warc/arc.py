@@ -44,6 +44,33 @@ class ArcHeader(CaseInsensitiveDict):
                                      offset = offset,
                                      filename = filename,
                                      length = length)
+    
+    def write_to(self, f, version = 2):
+        """
+        Writes out the arc header to the file like object `f`. 
+
+        If the version field is 1, it writes out an arc v1 header,
+        otherwise (and this is default), it outputs a v2 header.
+
+        """
+        if version == 1:
+            header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(length)s\n"
+        elif version == 2:
+            header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(result_code)s %(checksum)s %(location)s %(offset)s %(filename)s %(length)s\n"
+
+        header =  header%dict(url          = self.url,
+                              ip_address   = self.ip_address,
+                              date         = self.date,
+                              content_type = self.content_type,
+                              result_code  = self.result_code,
+                              checksum     = self.checksum,
+                              location     = self.location,
+                              offset       = self.offset,
+                              filename     = self.filename,
+                              length       = self.length)
+        f.write(header)
+            
+
     @property
     def url(self):
         return self["url"]
