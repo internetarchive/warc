@@ -74,7 +74,7 @@ class ArcHeader(CaseInsensitiveDict):
     
     @property
     def offset(self):
-        return self["offset"]
+        return int(self["offset"])
     
     @property
     def filename(self):
