@@ -118,7 +118,7 @@ class WARCHeader(CaseInsensitiveDict):
     def __repr__(self):
         return "<WARCHeader: type=%r, record_id=%r>" % (self.type, self.record_id)
 
-class WARCRecord:
+class WARCRecord(object):
     """The WARCRecord object represents a WARC Record.
     """
     def __init__(self, header=None, payload=None,  headers={}):
@@ -126,6 +126,7 @@ class WARCRecord:
         """
         self.header = header or WARCHeader(headers, defaults=True)
         self.payload = payload
+        # XXX:Noufal What if Content-Length is already specified in the header?
         if payload:
             self.header['Content-Length'] = str(len(payload))
         else:
