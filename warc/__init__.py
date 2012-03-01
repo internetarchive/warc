@@ -12,6 +12,7 @@ import datetime
 import uuid
 import logging
 import re
+import gzip
 from cStringIO import StringIO
 from UserDict import DictMixin
 
@@ -167,6 +168,7 @@ class WARCRecord:
         f.write(self.payload)
         f.write("\r\n")
         f.write("\r\n")
+        f.flush()
         
     def __getitem__(self, name):
         return self.header[name]
@@ -217,7 +219,10 @@ class WARCRecord:
 class WARCFile:
     def __init__(self, filename=None, mode=None, fileobj=None):
         if fileobj is None:
-            fileobj = __builtin__.open(filename, mode or "rb")
+            if filename.endswith(".gz"):
+                fileobj = gzip.open(filename, mode or "rb")
+            else:
+                fileobj = __builtin__.open(filename, mode or "rb")
         self.fileobj = fileobj
     
     def write(self, warc_record):
@@ -288,6 +293,7 @@ class WARCReader:
         record = WARCRecord(header, payload)
         self.expect("\r\n")
         self.expect("\r\n")
+        
         return record
 
     def __iter__(self):
