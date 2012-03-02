@@ -1,5 +1,5 @@
 """
-Provides support for Arc v1 files. 
+Provides support for ARC v1 files. 
 
 :copyright: (c) 2012 Internet Archive
 """
@@ -8,9 +8,9 @@ import StringIO
 
 from .utils import CaseInsensitiveDict
 
-class ArcHeader(CaseInsensitiveDict):
+class ARCHeader(CaseInsensitiveDict):
     """
-    Holds fields from an Arc V1 or V2 header.
+    Holds fields from an ARC V1 or V2 header.
     V1 header fields are
 
         * url
@@ -125,14 +125,14 @@ class ArcHeader(CaseInsensitiveDict):
                 f[i] = getattr(self, i)
         s = ['%s = "%s"'%(k, v) for k,v in f.iteritems()]
         s = ", ".join(s)
-        return "<ArcHeader(%s)>"%s
+        return "<ARCHeader(%s)>"%s
 
         
-class ArcRecord(object):
+class ARCRecord(object):
     def __init__(self, header = None, payload = None, headers = {}):
         if not (header or headers):
-            raise TypeError("Can't write create an Arc1 record without a header")
-        self.header = header or ArcHeader(**headers)
+            raise TypeError("Can't write create an ARC1 record without a header")
+        self.header = header or ARCHeader(**headers)
         self.payload = payload
     
     def write_to(self, f, version = 2):

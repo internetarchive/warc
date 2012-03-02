@@ -7,11 +7,11 @@ import pytest
 def test_init_arc_header():
     "Make sure Header can be initialise only with expected fields"
     with pytest.raises(TypeError):
-        arc.ArcHeader(test="1234")
+        arc.ARCHeader(test="1234")
     
 def test_arc_header_attributes():
-    "Make sure that Arc1 header fields are accessible as attributes"
-    header = arc.ArcHeader(url = "http://archive.org",
+    "Make sure that ARC1 header fields are accessible as attributes"
+    header = arc.ARCHeader(url = "http://archive.org",
                            ip_address = "127.0.0.1", 
                            date = "20120301093000", 
                            content_type = "text/html", 
@@ -34,8 +34,8 @@ def test_arc_header_attributes():
     assert header.filename == "sample.arc.gz"
     
 def test_arc_v1_header_creation():
-    "Validate Arc V1 header creation"
-    header = arc.ArcHeader(url = "http://archive.org",
+    "Validate ARC V1 header creation"
+    header = arc.ARCHeader(url = "http://archive.org",
                            ip_address = "127.0.0.1", 
                            date = "20120301093000", 
                            content_type = "text/html", 
@@ -52,8 +52,8 @@ def test_arc_v1_header_creation():
     
     
 def test_arc_v2_header_creation():
-    "Validate Arc V2 header creation"
-    header = arc.ArcHeader(url = "http://archive.org",
+    "Validate ARC V2 header creation"
+    header = arc.ARCHeader(url = "http://archive.org",
                            ip_address = "127.0.0.1", 
                            date = "20120301093000", 
                            content_type = "text/html", 
@@ -70,8 +70,8 @@ def test_arc_v2_header_creation():
     
     
 def test_arc_v1_record_creation():
-    "Validate Arc V1 record creation"
-    header = arc.ArcHeader(url = "http://archive.org",
+    "Validate ARC V1 record creation"
+    header = arc.ARCHeader(url = "http://archive.org",
                            ip_address = "127.0.0.1", 
                            date = "20120301093000", 
                            content_type = "text/html", 
@@ -81,14 +81,14 @@ def test_arc_v1_record_creation():
                            location = "http://www.archive.org",
                            offset = "300",
                            filename = "sample.arc.gz")
-    record_v1 = arc.ArcRecord(header, "BlahBlah")
+    record_v1 = arc.ARCRecord(header, "BlahBlah")
     f = StringIO.StringIO()
     record_v1.write_to(f)
     record_v1_string = f.getvalue()
     assert record_v1_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
 
 def test_arc_v2_record_creation():
-    "Validate Arc V1 record creation"
+    "Validate ARC V1 record creation"
     header = dict(url = "http://archive.org",
                   ip_address = "127.0.0.1", 
                   date = "20120301093000", 
@@ -99,7 +99,7 @@ def test_arc_v2_record_creation():
                   location = "http://www.archive.org",
                   offset = "300",
                   filename = "sample.arc.gz")
-    record_v1 = arc.ArcRecord(payload = "BlahBlah", headers = header)
+    record_v1 = arc.ARCRecord(payload = "BlahBlah", headers = header)
     f = StringIO.StringIO()
     record_v1.write_to(f)
     record_v1_string = f.getvalue()
