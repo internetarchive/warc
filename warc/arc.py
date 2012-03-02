@@ -4,7 +4,11 @@ Provides support for ARC v1 files.
 :copyright: (c) 2012 Internet Archive
 """
 
+import __builtin__
+import datetime
+import os
 import StringIO
+import warnings
 
 from .utils import CaseInsensitiveDict
 
@@ -35,6 +39,14 @@ class ARCHeader(CaseInsensitiveDict):
     """
     def __init__(self, url = "",  ip_address = "",  date = "",  content_type = "",  
                  result_code = "",  checksum = "",  location = "",  offset = "",  filename = "",  length = ""):
+
+        if isinstance(date, datetime.datetime):
+            date = date.strftime("%Y%m%d%H%M%S")
+        try:
+            datetime.datetime.strptime(date, "%Y%m%d%H%M%S")
+        except ValueError:
+            raise ValueError("Couldn't parse the date '%s' in file header"%date)
+
         CaseInsensitiveDict.__init__(self, 
                                      url = url, 
                                      ip_address = ip_address,
@@ -60,16 +72,16 @@ class ARCHeader(CaseInsensitiveDict):
         elif version == 2:
             header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(result_code)s %(checksum)s %(location)s %(offset)s %(filename)s %(length)s\n"
 
-        header =  header%dict(url          = self.url,
-                              ip_address   = self.ip_address,
-                              date         = self.date,
-                              content_type = self.content_type,
-                              result_code  = self.result_code,
-                              checksum     = self.checksum,
-                              location     = self.location,
-                              offset       = self.offset,
-                              filename     = self.filename,
-                              length       = self.length)
+        header =  header%dict(url          = self['url'],
+                              ip_address   = self['ip_address'],
+                              date         = self['date'],
+                              content_type = self['content_type'],
+                              result_code  = self['result_code'],
+                              checksum     = self['checksum'],
+                              location     = self['location'],
+                              offset       = self['offset'],
+                              filename     = self['filename'],
+                              length       = self['length'])
         f.write(header)
             
 
@@ -83,7 +95,7 @@ class ARCHeader(CaseInsensitiveDict):
     
     @property
     def date(self):
-        return self["date"]
+        return datetime.datetime.strptime(self['date'], "%Y%m%d%H%M%S")
     
     @property
     def content_type(self):
@@ -138,9 +150,136 @@ class ARCRecord(object):
     def write_to(self, f, version = 2):
         f.write("\n")
         self.header.write_to(f, version)
+        # XXX:Noufal
+        # The header writes out a \n as part of itself. The spec says
+        # that the header and payload are to be separated by another
+        # newline.  This makes it different from the Alexa crawl
+        # samples which don't have this extra \n
+        # XXX:Noufal
         f.write("\n")
         f.write(self.payload)
+    
+    def __str__(self):
+        f = StringIO.StringIO()
+        self.write_to(f)
+        return f.getvalue()
+        
+    
+class ARCFile(object):
+    def __init__(self, filename=None, mode=None, fileobj=None, version = None, file_headers = {}):
+        """
+        Initialises a file like object that can be used to read or
+        write Arc files. Works for both version 1 or version 2.
+
+        This can be called similar to the builtin `file` constructor. 
+
+        It can also just be given a fileobj which is a file like
+        object that it will use directly for its work.
+
+        The file_headers should contain the following fields used to
+        create the header for the file. The exact fields used depends
+        on whether v1 or v2 files are being created. If a read is
+        done, the headers will be autopopulated from the first record.
+
+           * ip_address - IP address of the machine doing the Archiving
+           * date - Date of archival
+           * org - Organisation that's doing the Archiving. 
+
+        The version parameter tries to work intuitively as follows
+
+            * If version is set to 'n' (where n is 1 or 2), the
+              library configures itself to read and write version n
+              ARC files.
+
+                  * When we try to write a record, it will generate
+                    and write a version n record.
+
+                  * When we try to read a record, it will attempt to
+                    parse it as a version n record and will error out
+                    if the format is different.
+
+            * If the version is unspecified, the library will
+              configures itself as follows
+
+                  * When we try to write a record, it will generate
+                    and write a version 2 record.
+
+                  * When we try to read a record, it will read out one
+                    record and try to guess the version from it (for
+                    the first read).
+        
+        """
+        if fileobj is None:
+            fileobj = __builtin__.open(filename, mode or "rb")
+        self.fileobj = fileobj
+
+        if version != None and int(version) not in (1, 2):
+            raise TypeError("ARC version has to be 1 or 2")
+        self.version = version
+        self.file_headers = file_headers
+        self.header_written = False
+
+        
+    def _write_header(self):
+        "Writes out an ARC header"
+        if "org" not in self.file_headers:
+            warnings.warn("Using 'unknown' for Archiving organisation name")
+            self.file_headers['org'] = "Unknown"
+        if "date" not in self.file_headers:
+            now = datetime.datetime.utcnow()
+            warnings.warn("Using '%s' for Archiving time"%now)
+            self.file_headers['date'] = now
+        if "ip_address" not in self.file_headers:
+            warnings.warn("Using '127.0.0.1' as IP address of machine that's archiving")
+            self.file_headers['ip_address'] = "127.0.0.1"
+
+        if self.version == 1:
+            payload = "1 0 %(org)s\nURL IP-address Archive-date Content-type Archive-length"%dict(org = self.file_headers['org'])
+        elif self.version == 2:
+            payload = "2 0 %(org)s\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length"
+        else:
+            raise IOError("Can't write an ARC file with version '\"%s\"'"%self.version)
+        
+        fname = os.path.basename(self.fileobj.name)
+        header = ARCHeader(url = "filedesc://%s"%fname,
+                           ip_address = self.file_headers['ip_address'], 
+                           date = self.file_headers['date'],
+                           content_type = "text/plain", 
+                           length = len(payload),
+                           result_code = "200",
+                           checksum = "-", 
+                           location = "-",
+                           offset = str(self.fileobj.tell()),
+                           filename = fname)
+        # We're doing this instead of directly using the write_to
+        # method to skip the leading newline which regular records
+        # have. If we don't do this, the first line of the ARC file
+        # will be a single newline.
+        s = StringIO.StringIO()
+        header.write_to(s, version = 1)
+        header = s.getvalue().lstrip()
+        self.fileobj.write(header)
+        self.fileobj.write(payload%self.file_headers)
+        self.fileobj.write("\n")
+            
+    def write(self, arc_record):
+        "Writes out the given arc record to the file"
+        if not self.version:
+            self.version = 2
+        if not self.header_written:
+            self._write_header()
+            self.header_written = True
+        arc_record.write_to(self.fileobj, self.version)
+    
+    def close(self):
+        self.fileobj.close()
         
         
         
+        
+        
+        
+    
+    
+    
     

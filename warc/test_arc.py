@@ -1,3 +1,5 @@
+import datetime
+import hashlib
 import StringIO
 
 from . import arc
@@ -10,7 +12,7 @@ def test_init_arc_header():
         arc.ARCHeader(test="1234")
     
 def test_arc_header_attributes():
-    "Make sure that ARC1 header fields are accessible as attributes"
+    "Make sure that ARC1 header fields are accessible as attributes. Double check for attributes that are converted for convenience (e.g. date and length)"
     header = arc.ARCHeader(url = "http://archive.org",
                            ip_address = "127.0.0.1", 
                            date = "20120301093000", 
@@ -24,9 +26,11 @@ def test_arc_header_attributes():
     
     assert header.url == "http://archive.org"
     assert header.ip_address == "127.0.0.1"
-    assert header.date == "20120301093000"
+    assert header.date == datetime.datetime.strptime("20120301093000", "%Y%m%d%H%M%S")
+    assert header['date'] == "20120301093000"
     assert header.content_type == "text/html"
     assert header.length == 500
+    assert header['length'] == "500"
     assert header.result_code == "200"
     assert header.checksum == "a123456"
     assert header.location == "http://www.archive.org"
@@ -105,9 +109,73 @@ def test_arc_v2_record_creation():
     record_v1_string = f.getvalue()
     assert record_v1_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
 
-    
+def test_arc_v1_writer():
+    "Try writing records to an ARC V1 file. This is what API will feel like to a user of the library"
+    now = "20120302193210"
+    file_headers = dict(ip_address = "127.0.0.1",
+                        date = now,
+                        org = "Internet Archive")
 
-    
+    opfile = StringIO.StringIO()
+    opfile.name = "sample.arc" # Necessary since only file objects in Python have names.
+
+    f = arc.ARCFile(fileobj = opfile, version = 1, file_headers = file_headers)
+    for payload in "Payload1 Payload2".split():
+        header = dict(url = "http://www.archive.org",
+                      ip_address = "127.0.0.1", 
+                      date = now, 
+                      content_type = "text/html",
+                      length = len(payload))
+        r = arc.ARCRecord(headers = header, payload = payload)
+        f.write(r)
+    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 76\n1 0 Internet Archive\nURL IP-address Archive-date Content-type Archive-length\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2"
+    f.close()
+
+def test_arc1_v1_writer_default_headers():
+    "This is similar to the previous test but validates the default values for all the header fields except time"
+    now = datetime.datetime(year = 2012, month = 3, day = 2, hour = 19, minute = 32, second = 10)
+    file_headers = dict(date = now)
+
+    opfile = StringIO.StringIO()
+    opfile.name = "sample.arc" # Necessary since only file objects in Python have names.
+        
+    f = arc.ARCFile(fileobj = opfile, version = 1, file_headers = file_headers)
+    for payload in "Payload1 Payload2".split():
+        header = dict(url = "http://www.archive.org",
+                      ip_address = "127.0.0.1", 
+                      date = now, 
+                      content_type = "text/html",
+                      length = len(payload))
+        r = arc.ARCRecord(headers = header, payload = payload)
+        f.write(r)
+    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 67\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2"
+    f.close()
 
 
-    
+def test_arc_v2_writer():
+    "Try writing records to an ARC V2 file. This is what API will feel like to a user of the library"
+    now = "20120302193210"
+    file_headers = dict(ip_address = "127.0.0.1",
+                        date = now,
+                        org = "Internet Archive")
+
+    opfile = StringIO.StringIO()
+    opfile.name = "sample.arc" # Necessary since only file objects in Python have names.
+
+    f = arc.ARCFile(fileobj = opfile, file_headers = file_headers)
+    for payload in "Payload1 Payload2".split():
+        header = arc.ARCHeader(url = "http://archive.org",
+                               ip_address = "127.0.0.1", 
+                               date = "20120301093000", 
+                               content_type = "text/html", 
+                               length = "500",
+                               result_code = "200",
+                               checksum = "a123456", 
+                               location = "http://www.archive.org",
+                               offset = "300",
+                               filename = "sample.arc.gz")
+        r = arc.ARCRecord(headers = header, payload = payload)
+        f.write(r)
+    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 113\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload2"
+    f.close()
+
