@@ -4,6 +4,8 @@ Provides support for Arc v1 files.
 :copyright: (c) 2012 Internet Archive
 """
 
+import StringIO
+
 from .utils import CaseInsensitiveDict
 
 class ArcHeader(CaseInsensitiveDict):
@@ -110,6 +112,20 @@ class ArcHeader(CaseInsensitiveDict):
     @property
     def length(self):
         return int(self["length"])
+
+    def __str__(self):
+        f = StringIO.StringIO()
+        self.write_to(f)
+        return f.getvalue()
+        
+    def __repr__(self):
+        f = {}
+        for i in "url ip_address date content_typeresult_code checksum location offset filename length".split():
+            if hasattr(self,i):
+                f[i] = getattr(self, i)
+        s = ['%s = "%s"'%(k, v) for k,v in f.iteritems()]
+        s = ", ".join(s)
+        return "<ArcHeader(%s)>"%s
 
         
 class ArcRecord(object):
