@@ -234,7 +234,7 @@ class WARCReader:
             raise IOError("Bad version line: %r" % version_line)
         version = m.group(1)
         if version not in self.SUPPORTED_VERSIONS:
-            raise IOError("Not supported WARC version: %s" % version)
+            raise IOError("Unsupported WARC version: %s" % version)
             
         headers = {}
         while True:
