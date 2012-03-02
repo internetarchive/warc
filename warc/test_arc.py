@@ -69,7 +69,43 @@ def test_arc_v2_header_creation():
     assert header_v2_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n"
     
     
+def test_arc_v1_record_creation():
+    "Validate Arc V1 record creation"
+    header = arc.ArcHeader(url = "http://archive.org",
+                           ip_address = "127.0.0.1", 
+                           date = "20120301093000", 
+                           content_type = "text/html", 
+                           length = "500",
+                           result_code = "200",
+                           checksum = "a123456", 
+                           location = "http://www.archive.org",
+                           offset = "300",
+                           filename = "sample.arc.gz")
+    record_v1 = arc.ArcRecord(header, "BlahBlah")
+    f = StringIO.StringIO()
+    record_v1.write_to(f)
+    record_v1_string = f.getvalue()
+    assert record_v1_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
 
+def test_arc_v2_record_creation():
+    "Validate Arc V1 record creation"
+    header = dict(url = "http://archive.org",
+                  ip_address = "127.0.0.1", 
+                  date = "20120301093000", 
+                  content_type = "text/html", 
+                  length = "500",
+                  result_code = "200",
+                  checksum = "a123456", 
+                  location = "http://www.archive.org",
+                  offset = "300",
+                  filename = "sample.arc.gz")
+    record_v1 = arc.ArcRecord(payload = "BlahBlah", headers = header)
+    f = StringIO.StringIO()
+    record_v1.write_to(f)
+    record_v1_string = f.getvalue()
+    assert record_v1_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
+
+    
 
     
 

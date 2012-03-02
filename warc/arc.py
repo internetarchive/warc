@@ -134,6 +134,12 @@ class ArcRecord(object):
             raise TypeError("Can't write create an Arc1 record without a header")
         self.header = header or ArcHeader(**headers)
         self.payload = payload
+    
+    def write_to(self, f, version = 2):
+        f.write("\n")
+        self.header.write_to(f, version)
+        f.write("\n")
+        f.write(self.payload)
         
         
         
