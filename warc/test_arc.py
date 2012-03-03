@@ -179,5 +179,65 @@ def test_arc_v2_writer():
     assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 114\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload2"
     f.close()
 
-
+def test_arc_reader_guess_version():
+    "Make sure that the ARCFile object automatically detects the file version"
+    v1 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 68\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2")
+    v2 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 114\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload2")
     
+    arc_v1 = arc.ARCFile(fileobj = v1)
+    arc_v2 = arc.ARCFile(fileobj = v2)
+
+    arc_v1.read()
+    arc_v2.read()
+    
+    assert arc_v1.version == 1
+    assert arc_v2.version == 2
+    
+def test_arc_reader_read_file_headers():
+    "Make sure that the parser is reading file headers properly"
+    ip = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 114\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload2")
+    arc_file = arc.ARCFile(fileobj = ip)
+    arc_file.read()
+    arc_file.file_headers['ip_address'] == "127.0.0.1"
+    arc_file.file_headers['date'] == "20120301093000"
+    arc_file.file_headers['org'] == "Internet Archive"
+
+
+def test_arc_reader_v1():    
+    "Make sure that the parser reads out V1 ARC records. (Also tests iterator behaviour)"
+    v1 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 68\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://archive.org 127.0.0.1 20120302193211 text/plain 8\n\nPayload2")
+    arc_file = arc.ARCFile(fileobj = v1)    
+
+    r1, r2 = list(arc_file)
+    
+    assert r1['url'] == "http://www.archive.org"
+    assert r1['ip_address'] == "127.0.0.1"
+    assert r1['date'] == "20120302193210"
+    assert r1['content_type'] == "text/html"
+    assert r1['length'] == "8"
+    assert r1.payload == "Payload1"
+
+    assert r2['url'] == "http://archive.org"
+    assert r2['ip_address'] == "127.0.0.1"
+    assert r2['date'] == "20120302193211"
+    assert r2['content_type'] == "text/plain"
+    assert r2['length'] == "8"
+    assert r2.payload == "Payload2"
+
+
+def test_arc_reader_v2():    
+    "Make sure that the parser reads out V2 ARC records. (Also tests iterator behaviour)"
+    v2 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 114\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 8\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 8\n\nPayload2")
+    arc_file = arc.ARCFile(fileobj = v2)    
+    r1, r2 = list(arc_file)
+    
+    assert r1['url'] == "http://archive.org"
+    assert r1['ip_address'] == "127.0.0.1"
+    assert r1['date'] == "20120301093000"
+    assert r1['content_type'] == "text/html"
+    assert r1['checksum'] == "a123456"
+    assert r1['location'] == "http://www.archive.org"
+    assert r1['offset'] == "300"
+    assert r1['filename'] == "sample.arc.gz"
+    assert r1['length'] == "8"
+    assert r1.payload == "Payload1"

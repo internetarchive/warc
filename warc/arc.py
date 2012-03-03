@@ -158,6 +158,13 @@ class ARCRecord(object):
         # XXX:Noufal
         f.write("\n")
         f.write(self.payload)
+
+    def __getitem__(self, name):
+        return self.header[name]
+
+    def __setitem__(self, name, value):
+        self.header[name] = value
+
     
     def __str__(self):
         f = StringIO.StringIO()
@@ -218,6 +225,7 @@ class ARCFile(object):
         self.version = version
         self.file_headers = file_headers
         self.header_written = False
+        self.header_read = False
 
         
     def _write_header(self):
@@ -262,6 +270,72 @@ class ARCFile(object):
             self._write_header()
             self.header_written = True
         arc_record.write_to(self.fileobj, self.version)
+
+    def _read_file_header(self):
+        """Reads out the file header for the arc file. If version was
+        not provided, this will autopopulate it."""
+        header = self.fileobj.readline()
+        payload1 = self.fileobj.readline()
+        payload2 = self.fileobj.readline()
+        version, reserved, organisation = payload1.split(None, 2)
+        self.fileobj.readline() # Lose the newline
+        self.header_read = True
+        
+        if self.version and int(self.version) != version:
+            raise IOError("Version mismatch. Requested version was '%s' but version in file was '%s'"%(self.version, version))
+        
+        if version == '1':
+            url, ip_address, date, content_type, length = header.split()
+            self.file_headers = {"ip_address" : ip_address,
+                                 "date" : datetime.datetime.strptime(date, "%Y%m%d%H%M%S"),
+                                 "org" : organisation}
+            self.version = 1
+        elif version == '2':
+            url, ip_address, date, content_type, result_code, checksum, location, offset, filename, length  = header.split()
+            self.file_headers = {"ip_address" : ip_address,
+                                 "date" : datetime.datetime.strptime(date, "%Y%m%d%H%M%S"),
+                                 "org" : organisation}
+            self.version = 2
+        else:
+            raise IOError("Unknown ARC version '%s'"%version)
+
+    def _read_arc_record(self):
+        "Reads out an arc record, formats it and returns it"
+        #XXX:Noufal Stream payload here rather than just read it
+        r = self.fileobj.readline() # Drop the initial newline
+        if r == "":
+            return None
+        header = self.fileobj.readline()
+        self.fileobj.readline() # Drop the separator newline
+
+        if self.version == 1:
+            url, ip_address, date, content_type, length = header.split()
+            headers = dict(url = url, ip_address = ip_address,
+                           date = date, content_type = content_type,
+                           length = length)
+            arc_header = ARCHeader(**headers)
+        elif self.version == 2:
+            url, ip_address, date, content_type, result_code, checksum, location, offset, filename, length  = header.split()
+            headers = dict(url = url, ip_address = ip_address, date = date, 
+                           content_type = content_type, result_code = result_code, 
+                           checksum = checksum, location = location, offset = offset, 
+                           filename = filename, length = length)
+            arc_header = ARCHeader(**headers)
+        payload = self.fileobj.read(int(length))
+
+        return ARCRecord(header = arc_header, payload = payload)
+        
+    def read(self):
+        "Reads out an arc record from the file"
+        if not self.header_read:
+            self._read_file_header()
+        return self._read_arc_record()
+
+    def __iter__(self):
+        record = self.read()
+        while record:
+            yield record
+            record = self.read()
     
     def close(self):
         self.fileobj.close()
