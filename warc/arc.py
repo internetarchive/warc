@@ -232,11 +232,10 @@ class ARCFile(object):
         if "ip_address" not in self.file_headers:
             warnings.warn("Using '127.0.0.1' as IP address of machine that's archiving")
             self.file_headers['ip_address'] = "127.0.0.1"
-
         if self.version == 1:
-            payload = "1 0 %(org)s\nURL IP-address Archive-date Content-type Archive-length"%dict(org = self.file_headers['org'])
+            payload = "1 0 %(org)s\nURL IP-address Archive-date Content-type Archive-length\n"%dict(org = self.file_headers['org'])
         elif self.version == 2:
-            payload = "2 0 %(org)s\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length"
+            payload = "2 0 %(org)s\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n"
         else:
             raise IOError("Can't write an ARC file with version '\"%s\"'"%self.version)
         
@@ -251,14 +250,7 @@ class ARCFile(object):
                            location = "-",
                            offset = str(self.fileobj.tell()),
                            filename = fname)
-        # We're doing this instead of directly using the write_to
-        # method to skip the leading newline which regular records
-        # have. If we don't do this, the first line of the ARC file
-        # will be a single newline.
-        s = StringIO.StringIO()
-        header.write_to(s, version = 1)
-        header = s.getvalue().lstrip()
-        self.fileobj.write(header)
+        header.write_to(self.fileobj, version = self.version)
         self.fileobj.write(payload%self.file_headers)
         self.fileobj.write("\n")
             

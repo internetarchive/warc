@@ -128,7 +128,7 @@ def test_arc_v1_writer():
                       length = len(payload))
         r = arc.ARCRecord(headers = header, payload = payload)
         f.write(r)
-    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 76\n1 0 Internet Archive\nURL IP-address Archive-date Content-type Archive-length\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2"
+    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 77\n1 0 Internet Archive\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2"
     f.close()
 
 def test_arc1_v1_writer_default_headers():
@@ -148,7 +148,7 @@ def test_arc1_v1_writer_default_headers():
                       length = len(payload))
         r = arc.ARCRecord(headers = header, payload = payload)
         f.write(r)
-    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 67\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2"
+    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 68\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2"
     f.close()
 
 
@@ -176,6 +176,8 @@ def test_arc_v2_writer():
                                filename = "sample.arc.gz")
         r = arc.ARCRecord(headers = header, payload = payload)
         f.write(r)
-    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 113\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload2"
+    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 114\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload2"
     f.close()
 
+
+    
