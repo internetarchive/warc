@@ -27,7 +27,7 @@ def open(filename, mode="rb", format = None):
     Auto detects file and opens it.
 
     """
-    if format == "auto":
+    if format == "auto" or None:
         format = detect_format(filename)
 
     if format == "warc":
