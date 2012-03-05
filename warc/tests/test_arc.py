@@ -2,7 +2,7 @@ import datetime
 import hashlib
 import StringIO
 
-from . import arc
+from .. import arc
 
 import pytest
 
