@@ -16,6 +16,7 @@ import gzip
 from cStringIO import StringIO
 
 from .utils import CaseInsensitiveDict
+from .arc import ARCFile
 
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
@@ -33,6 +34,20 @@ class WARCHeader(CaseInsensitiveDict):
     :params defaults: If True, important headers like WARC-Record-ID, 
                       WARC-Date, Content-Type and Content-Length are
                       initialized to automatically if not already present.
+    TODO:
+        List of attributes needed to make WARCHeaders look like ARC files
+
+        * url
+        * ip_address
+        * date (date of archival)
+        * content_type 
+        * result_code (response code)
+        * checksum 
+        * location
+        * offset (offset from beginning of file to recrod)
+        * filename (name of arc file)
+        * length (length of the n/w doc in bytes)
+
     """
     
     CONTENT_TYPES = dict(warcinfo='application/warc-fields',
@@ -73,6 +88,17 @@ class WARCHeader(CaseInsensitiveDict):
         if "Content-Type" not in self:
             self['Content-Type'] = WARCHeader.CONTENT_TYPES.get(self.type, "application/octet-stream")
         self.setdefault("Content-Length", "0")
+        
+    def init_arc_attributes(self):
+        """
+        Initialises a few attributes that make the WARCHeader
+        attributes compatible with ARCHeader. Namely
+
+
+        """
+        
+
+        
                         
     def write_to(self, f):
         """Writes this header to a file, in the format specified by WARC.
@@ -210,11 +236,34 @@ class WARCFile:
         
     def close(self):
         self.fileobj.close()
+
+def detect_format(filename):
+    """Tries to figure out the type of the file. Return 'warc' for
+    WARC files and 'arc' for ARC files"""
+    
+    if ".arc" in filename:
+        return "arc"
+    if ".warc" in filename: 
+        return "warc"
+    
+    return "unknown"
         
-def open(filename, mode="rb"):
+def open(filename, mode="rb", format = None):
     """Shorthand for WARCFile(filename, mode).
+
+    Auto detects file and opens it.
+
     """
-    return WARCFile(filename, mode)
+    if format == "auto":
+        format = detect_format(filename)
+
+    if format == "warc":
+        return WARCFile(filename, mode)
+    elif format == "arc":
+        return ARCFile(filename, mode)
+    else:
+        raise IOError("Don't know how to open '%s' files"%format)
+    
 
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
