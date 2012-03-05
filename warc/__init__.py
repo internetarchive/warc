@@ -12,41 +12,10 @@ import datetime
 import uuid
 import logging
 import re
+import gzip
 from cStringIO import StringIO
-from UserDict import DictMixin
 
-class CaseInsensitiveDict(DictMixin):
-    """Almost like a dictionary, but keys are case-insensitive.
-    
-        >>> d = CaseInsensitiveDict(foo=1, Bar=2)
-        >>> d['foo']
-        1
-        >>> d['bar']
-        2
-        >>> d['Foo'] = 11
-        >>> d['FOO']
-        11
-        >>> d.keys()
-        ["foo", "bar"]
-    """
-    def __init__(self, mapping=None, **kwargs):
-        self._d = {}
-        self.update(mapping, **kwargs)
-        
-    def __setitem__(self, name, value):
-        self._d[name.lower()] = value
-    
-    def __getitem__(self, name):
-        return self._d[name.lower()]
-        
-    def __delitem__(self, name):
-        del self._d[name.lower()]
-        
-    def __eq__(self, other):
-        return isinstance(other, CaseInsensitiveDict) and other._d == self._d
-        
-    def keys(self):
-        return self._d.keys()
+from .utils import CaseInsensitiveDict
 
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
@@ -149,7 +118,7 @@ class WARCHeader(CaseInsensitiveDict):
     def __repr__(self):
         return "<WARCHeader: type=%r, record_id=%r>" % (self.type, self.record_id)
 
-class WARCRecord:
+class WARCRecord(object):
     """The WARCRecord object represents a WARC Record.
     """
     def __init__(self, header=None, payload=None,  headers={}):
@@ -157,6 +126,7 @@ class WARCRecord:
         """
         self.header = header or WARCHeader(headers, defaults=True)
         self.payload = payload
+        # XXX:Noufal What if Content-Length is already specified in the header?
         if payload:
             self.header['Content-Length'] = str(len(payload))
         else:
@@ -167,6 +137,7 @@ class WARCRecord:
         f.write(self.payload)
         f.write("\r\n")
         f.write("\r\n")
+        f.flush()
         
     def __getitem__(self, name):
         return self.header[name]
@@ -217,7 +188,10 @@ class WARCRecord:
 class WARCFile:
     def __init__(self, filename=None, mode=None, fileobj=None):
         if fileobj is None:
-            fileobj = __builtin__.open(filename, mode or "rb")
+            if filename.endswith(".gz"):
+                fileobj = gzip.open(filename, mode or "rb")
+            else:
+                fileobj = __builtin__.open(filename, mode or "rb")
         self.fileobj = fileobj
     
     def write(self, warc_record):
@@ -260,7 +234,7 @@ class WARCReader:
             raise IOError("Bad version line: %r" % version_line)
         version = m.group(1)
         if version not in self.SUPPORTED_VERSIONS:
-            raise IOError("Not supported WARC version: %s" % version)
+            raise IOError("Unsupported WARC version: %s" % version)
             
         headers = {}
         while True:
@@ -288,6 +262,7 @@ class WARCReader:
         record = WARCRecord(header, payload)
         self.expect("\r\n")
         self.expect("\r\n")
+        
         return record
 
     def __iter__(self):

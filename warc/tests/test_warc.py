@@ -1,4 +1,4 @@
-from . import WARCReader, WARCHeader, CaseInsensitiveDict, WARCFile
+from .. import WARCReader, WARCHeader, CaseInsensitiveDict, WARCFile
 
 from StringIO import StringIO
 
