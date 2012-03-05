@@ -20,7 +20,9 @@ The documentation of the warc library is available at http://readthedocs.org/doc
 Build Status
 ------------
 
-[![Build Status](https://secure.travis-ci.org/anandology/warc.png?branch=master)](http://travis-ci.org/anandology/warc)
+.. image:: https://secure.travis-ci.org/anandology/warc.png?branch=master
+    :alt: Build Status
+    :href: http://travis-ci.org/anandology/warc
 
 License
 -------
