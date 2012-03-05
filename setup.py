@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="warc",
-    version="0.1",
+    version="0.2-dev",
     description="Python library to work with WARC files",
     long_description=open('Readme.rst').read(),
     license='BSD',
