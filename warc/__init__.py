@@ -16,6 +16,7 @@ import gzip
 from cStringIO import StringIO
 
 from .utils import CaseInsensitiveDict
+from .arc import ARCFile
 
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
@@ -235,11 +236,34 @@ class WARCFile:
         
     def close(self):
         self.fileobj.close()
+
+def detect_format(filename):
+    """Tries to figure out the type of the file. Return 'warc' for
+    WARC files and 'arc' for ARC files"""
+    
+    if ".arc" in filename:
+        return "arc"
+    if ".warc" in filename: 
+        return "warc"
+    
+    return "unknown"
         
-def open(filename, mode="rb"):
+def open(filename, mode="rb", format = None):
     """Shorthand for WARCFile(filename, mode).
+
+    Auto detects file and opens it.
+
     """
-    return WARCFile(filename, mode)
+    if format == "auto":
+        format = detect_format(filename)
+
+    if format == "warc":
+        return WARCFile(filename, mode)
+    elif format == "arc":
+        return ARCFile(filename, mode)
+    else:
+        raise IOError("Don't know how to open '%s' files"%format)
+    
 
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
