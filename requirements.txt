@@ -1,1 +1,2 @@
 pytest
+git+git://github.com/anandology/gzip2.git#egg=gzip2

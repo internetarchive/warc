@@ -12,10 +12,11 @@ import datetime
 import uuid
 import logging
 import re
-import gzip
+import gzip2
 from cStringIO import StringIO
+import hashlib
 
-from .utils import CaseInsensitiveDict
+from .utils import CaseInsensitiveDict, FilePart
 
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
@@ -48,7 +49,6 @@ class WARCHeader(CaseInsensitiveDict):
         * length (length of the n/w doc in bytes)
 
     """
-    
     CONTENT_TYPES = dict(warcinfo='application/warc-fields',
                         response='application/http; msgtype=response',
                         request='application/http; msgtype=request',
@@ -86,18 +86,7 @@ class WARCHeader(CaseInsensitiveDict):
             self['WARC-Date'] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         if "Content-Type" not in self:
             self['Content-Type'] = WARCHeader.CONTENT_TYPES.get(self.type, "application/octet-stream")
-        self.setdefault("Content-Length", "0")
-        
-    def init_arc_attributes(self):
-        """
-        Initialises a few attributes that make the WARCHeader
-        attributes compatible with ARCHeader. Namely
-
-
-        """
-        
-
-        
+        self.setdefault("Content-Length", "0")        
                         
     def write_to(self, f):
         """Writes this header to a file, in the format specified by WARC.
@@ -146,23 +135,62 @@ class WARCHeader(CaseInsensitiveDict):
 class WARCRecord(object):
     """The WARCRecord object represents a WARC Record.
     """
-    def __init__(self, header=None, payload=None,  headers={}):
+    def __init__(self, header=None, payload=None,  headers={}, defaults=True):
         """Creates a new WARC record. 
         """
         self.header = header or WARCHeader(headers, defaults=True)
         self.payload = payload
-        # XXX:Noufal What if Content-Length is already specified in the header?
-        if payload:
-            self.header['Content-Length'] = str(len(payload))
-        else:
-            self.header['Content-Length'] = "0"
         
+        if defaults is True and 'Content-Length' not in self.header:
+            if payload:
+                self.header['Content-Length'] = str(len(payload))
+            else:
+                self.header['Content-Length'] = "0"
+                
+        if defaults is True and 'WARC-Payload-Digest' not in self.header:
+            self.header['WARC-Payload-Digest'] = self._compute_digest(payload)
+            
+    def _compute_digest(self, payload):
+        return "sha1:" + hashlib.sha1(payload).hexdigest()
+                
     def write_to(self, f):
         self.header.write_to(f)
         f.write(self.payload)
         f.write("\r\n")
         f.write("\r\n")
         f.flush()
+        
+    @property
+    def type(self):
+        """Record type"""
+        return self.header.type
+
+    @property
+    def url(self):
+        """The value of the WARC-Target-URI header if the record is of type "response"."""
+        return self.header.get('WARC-Target-URI')
+    
+    @property
+    def ip_address(self):
+        """The IP address of the host contacted to retrieve the content of this record. 
+        
+        This value is available from the WARC-IP-Address header."""
+        return self.header.get('WARC-IP-Address')
+
+    @property
+    def date(self):
+        """UTC timestamp of the record."""
+        return self.header.get("WARC-Date")
+    
+    @property
+    def checksum(self):
+        return self.header.get('WARC-Payload-Digest')
+        
+    @property
+    def offset(self):
+        """Offset of this record in the warc file from which this record is read.
+        """
+        pass
         
     def __getitem__(self, name):
         return self.header[name]
@@ -214,56 +242,62 @@ class WARCFile:
     def __init__(self, filename=None, mode=None, fileobj=None):
         if fileobj is None:
             if filename.endswith(".gz"):
-                fileobj = gzip.open(filename, mode or "rb")
+                fileobj = gzip2.open(filename, mode or "rb")
             else:
                 fileobj = __builtin__.open(filename, mode or "rb")
         self.fileobj = fileobj
+        self._reader = None
+        
+    @property
+    def reader(self):
+        if self._reader is None:
+            self._reader = WARCReader(self.fileobj)
+        return self._reader
+    
     
     def write(self, warc_record):
         """Adds a warc record to this WARC file.
         """
         warc_record.write_to(self.fileobj)
+        # Each warc record is written as separate member in the gzip file
+        # so that each record can be read independetly.
+        if isinstance(self.fileobj, gzip2.GzipFile):
+            self.fileobj.close_member()
         
     def read(self):
         """Reads a warc record from this WARC file."""
-        reader = WARCReader(self.fileobj)
-        return reader.read_record()
+        return self.reader.read_record()
         
     def __iter__(self):
-        reader = WARCReader(self.fileobj)
-        return iter(reader)
+        return iter(self.reader)
         
     def close(self):
         self.fileobj.close()
-
-def detect_format(filename):
-    """Tries to figure out the type of the file. Return 'warc' for
-    WARC files and 'arc' for ARC files"""
-    
-    if ".arc" in filename:
-        return "arc"
-    if ".warc" in filename: 
-        return "warc"
-    
-    return "unknown"
         
-def open(filename, mode="rb", format = None):
-    """Shorthand for WARCFile(filename, mode).
+    def read2(self):
+        """Returns iterator over (record, offset, size) for each record in the file.
+        
+        TODO: find a better name for this function.
+        """
+        try:
+            offset = 0
+            for record in self.reader:
+                next_offset = self.tell()
+                yield record, offset, next_offset-offset
+                offset = next_offset
+        except:
+            import traceback
+            traceback.print_exc()
 
-    Auto detects file and opens it.
-
-    """
-    if format == "auto":
-        format = detect_format(filename)
-
-    if format == "warc":
-        return WARCFile(filename, mode)
-    elif format == "arc":
-        return ARCFile(filename, mode)
-    else:
-        raise IOError("Don't know how to open '%s' files"%format)
+    def tell(self):
+        """Returns the file offset. If this is a compressed file, then the 
+        offset in the compressed file is returned.
+        """
+        if isinstance(self.fileobj, gzip2.GzipFile):
+            return self.fileobj.fileobj.tell()
+        else:
+            return self.fileobj.tell()            
     
-
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
     RE_HEADER = re.compile(r"([a-zA-Z_\-]+): *(.*)\r\n")
@@ -271,9 +305,10 @@ class WARCReader:
     
     def __init__(self, fileobj):
         self.fileobj = fileobj
-    
-    def read_header(self):
-        version_line = self.fileobj.readline()
+        self.current_payload = None
+        
+    def read_header(self, fileobj):
+        version_line = fileobj.readline()
         if not version_line:
             return None
             
@@ -286,7 +321,7 @@ class WARCReader:
             
         headers = {}
         while True:
-            line = self.fileobj.readline()
+            line = fileobj.readline()
             if line == "\r\n": # end of headers
                 break
             m = self.RE_HEADER.match(line)
@@ -296,25 +331,47 @@ class WARCReader:
             headers[name] = value
         return WARCHeader(headers)
         
-    def expect(self, expected_line, message=None):
-        line = self.fileobj.readline()
+    def expect(self, fileobj, expected_line, message=None):
+        line = fileobj.readline()
         if line != expected_line:
             message = message or "Expected %r, found %r" % (expected_line, line)
             raise IOError(message)
 
     def read_record(self):
-        header = self.read_header()
+        if isinstance(self.fileobj, gzip2.GzipFile):
+            fileobj = self.fileobj.read_member()
+            if fileobj is None:
+                return None
+        else:
+            fileobj = self.fileobj
+
+        # consume the footer from the previous record
+        if self.current_payload:
+            # consume all data from the current_payload before moving to next record
+            self.current_payload.read()
+            self.expect(fileobj, "\r\n")
+            self.expect(fileobj, "\r\n")
+            self.current_payload = None
+            
+        header = self.read_header(fileobj)
         if header is None:
             return None
-        payload = self.fileobj.read(header.content_length)
-        record = WARCRecord(header, payload)
-        self.expect("\r\n")
-        self.expect("\r\n")
         
+        self.current_payload = FilePart(fileobj, header.content_length)
+        record = WARCRecord(header, self.current_payload, defaults=False)
         return record
+
+    def _read_payload(self, fileobj, content_length):
+        size = 0
+        while size < content_length:
+            chunk_size = min(1024, content_length-size)
+            chunk = fileobj.read(chunk_size)
+            size += chunk_size
+            yield chunk
 
     def __iter__(self):
         record = self.read_record()
         while record is not None:
             yield record
             record = self.read_record()
+            

@@ -95,7 +95,7 @@ class TestWARCReader:
             "\r\n"
         )
         f = StringIO(str(text))
-        h = WARCReader(f).read_header()
+        h = WARCReader(f).read_record().header
         assert h.date == "2012-02-10T16:15:52Z"
         assert h.record_id == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
         assert h.type == "response"
@@ -104,12 +104,11 @@ class TestWARCReader:
     def test_read_header(self):
         h = WARCHeader({"WARC-Type": "response"}, defaults=True)
         f = StringIO(str(h))
-        h2 = WARCReader(f).read_header()
+        h2 = WARCReader(f).read_record().header
         assert h == h2
         
     def test_empty(self):
         reader = WARCReader(StringIO(""))
-        assert reader.read_header() is None
         assert reader.read_record() is None
     
     def test_read_record(self):
@@ -128,7 +127,7 @@ class TestWARCReader:
         f = StringIO(text)
         reader = WARCReader(f)
         record = reader.read_record()
-        assert record.payload == "Helloworld"
+        assert "".join(record.payload) == "Helloworld"
         
     def read_multiple_records(self):
         text = (
