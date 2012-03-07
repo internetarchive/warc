@@ -1,6 +1,6 @@
 """
-warc
-~~~~
+warc.utils
+~~~~~~~~~~
 
 This file is part of warc
 
@@ -41,3 +41,56 @@ class CaseInsensitiveDict(DictMixin):
         
     def keys(self):
         return self._d.keys()
+
+class FilePart:
+    """File interface over a part of file.
+    
+    Takes a file and length to read from the file and returns a file-object 
+    over that part of the file.
+    """
+    def __init__(self, file, length):
+        self.file = file
+        self.length = length
+        self.offset = 0
+        self.buf = "" 
+        
+    def read(self, size=-1):
+        if size == -1:
+            return self._read(self.length)
+        else:
+            return self._read(size)
+        
+    def _read(self, size):
+        if len(self.buf) >= size:
+            content = self.buf[:size]
+            self.buf = self.buf[size:]
+        else:
+            size = min(size, self.length - self.offset - len(self.buf))
+            content = self.buf + self.file.read(size)
+            self.buf = ""
+        self.offset += len(content)
+        return content
+        
+    def _unread(self, content):
+        self.buf = self.buf + content
+        self.offset -= len(content)
+        
+    def readline(self):
+        chunks = []
+        chunk = self._read(1024)
+        while chunk and "\n" not in chunk:
+            chunks.append(chunk)
+            chunk = self._read(1024)
+            
+        if "\n" in chunk:
+            index = chunk.index("\n")
+            self._unread(chunk[index+1:])
+            chunk = chunk[:index+1]
+        chunks.append(chunk)
+        return "".join(chunks)
+
+    def __iter__(self):
+        line = self.readline()
+        while line:
+            yield line
+            line = self.readline()
