@@ -132,31 +132,6 @@ Or by passing a dictionary of headers. ::
 
     >>> record = warc.WARCRecord(payload="helloworld", headers={"WARC-Type": "response"})
     
-There is a handy utility to create WARCRecord from a :class:`requests.Response` object. ::
-
-    >>> import requests
-    >>> response = requests.get("http://httpbin.org/user-agent")
-    >>> record = warc.WARCRecord.from_response(response)
-    >>> print record
-    WARC/1.0
-    WARC-Type: response
-    Content-Length: 201
-    WARC-Date: 2012-02-23T14:58:40Z
-    WARC-Target-URI: http://httpbin.org/user-agent
-    Content-Type: application/http; msgtype=response
-    WARC-Record-ID: <urn:uuid:def65bb4-5e2e-11e1-ad30-c42c0325ac11>
-
-    HTTP/1.1 200 OK
-    Content-Type: application/json
-    Date: Thu, 23 Feb 2012 14:58:17 GMT
-    Server: gunicorn/0.13.4
-    Content-Length: 44
-    Connection: keep-alive
-
-    {
-      "user-agent": "python-requests/0.10.1"
-    }
-
 License
 -------
 
