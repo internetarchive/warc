@@ -1,23 +1,7 @@
-from ..warc import WARCReader, WARCHeader, WARCRecord, CaseInsensitiveDict, WARCFile
+from ..warc import WARCReader, WARCHeader, WARCRecord, WARCFile
 
 from StringIO import StringIO
 
-class TestCaseInsensitiveDict:
-    def test_all(self):
-        d = CaseInsensitiveDict()
-        d['Foo'] = 1
-        assert d['foo'] == 1
-        assert 'foo' in d
-        assert 'Foo' in d
-
-        assert 'bar' not in d
-        d['BAR'] = 2
-        assert 'bar' in d
-        assert d['bar'] == 2
-        
-        assert sorted(d.keys()) == ["bar", "foo"]
-        assert sorted(d.items()) == [("bar", 2), ("foo", 1)]
-        
 class TestWARCHeader:
     def test_attrs(self):
         h = WARCHeader({

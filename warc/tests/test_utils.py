@@ -1,6 +1,22 @@
-from ..utils import FilePart
+from ..utils import FilePart, CaseInsensitiveDict
 from cStringIO import StringIO
 
+class TestCaseInsensitiveDict:
+    def test_all(self):
+        d = CaseInsensitiveDict()
+        d['Foo'] = 1
+        assert d['foo'] == 1
+        assert 'foo' in d
+        assert 'Foo' in d
+
+        assert 'bar' not in d
+        d['BAR'] = 2
+        assert 'bar' in d
+        assert d['bar'] == 2
+        
+        assert sorted(d.keys()) == ["bar", "foo"]
+        assert sorted(d.items()) == [("bar", 2), ("foo", 1)]
+        
 class TestFilePart:
     def setup_method(self, m):
         # 5 chars in each line
