@@ -1,4 +1,4 @@
-from ..warc import WARCReader, WARCHeader, CaseInsensitiveDict, WARCFile
+from ..warc import WARCReader, WARCHeader, WARCRecord, CaseInsensitiveDict, WARCFile
 
 from StringIO import StringIO
 
@@ -57,7 +57,6 @@ class TestWARCHeader:
         h = WARCHeader({"WARC-Type": "resource"}, defaults=True)
         assert h.type == "resource"
         assert "WARC-Date" in h
-        assert "Content-Length" in h
         assert "Content-Type" in h
         assert "WARC-Record-ID" in h
 
@@ -84,79 +83,47 @@ SAMPLE_WARC_RECORD_TEXT = (
 
 class TestWARCReader:
     def test_read_header1(self):
-        text = (
-            "WARC/1.0\r\n" +
-            "Content-Length: 10\r\n" +
-            "WARC-Date: 2012-02-10T16:15:52Z\r\n" +
-            "Content-Type: application/http; msgtype=response\r\n" +
-            "WARC-Type: response\r\n" +
-            "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n" +
-            "WARC-Target-URI: http://example.com/\r\n" +
-            "\r\n"
-        )
-        f = StringIO(str(text))
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT)
         h = WARCReader(f).read_record().header
         assert h.date == "2012-02-10T16:15:52Z"
         assert h.record_id == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
         assert h.type == "response"
         assert h.content_length == 10
-        
-    def test_read_header(self):
-        h = WARCHeader({"WARC-Type": "response"}, defaults=True)
-        f = StringIO(str(h))
-        h2 = WARCReader(f).read_record().header
-        assert h == h2
-        
+                
     def test_empty(self):
         reader = WARCReader(StringIO(""))
         assert reader.read_record() is None
     
     def test_read_record(self):
-        text = (
-            "WARC/1.0\r\n" +
-            "Content-Length: 10\r\n" +
-            "WARC-Date: 2012-02-10T16:15:52Z\r\n" +
-            "Content-Type: application/http; msgtype=response\r\n" +
-            "WARC-Type: response\r\n" +
-            "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n" +
-            "WARC-Target-URI: http://example.com/\r\n" +
-            "\r\n" +
-            "Helloworld" +
-            "\r\n\r\n"
-        )
-        f = StringIO(text)
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT)
         reader = WARCReader(f)
         record = reader.read_record()
         assert "".join(record.payload) == "Helloworld"
         
     def read_multiple_records(self):
-        text = (
-            "WARC/1.0\r\n" +
-            "Content-Length: 10\r\n" +
-            "WARC-Date: 2012-02-10T16:15:52Z\r\n" +
-            "Content-Type: application/http; msgtype=response\r\n" +
-            "WARC-Type: response\r\n" +
-            "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n" +
-            "WARC-Target-URI: http://example.com/\r\n" +
-            "\r\n" +
-            "Helloworld" +
-            "\r\n\r\n"
-        )
-        f = StringIO(text * 5)
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT * 5)
         reader = WARCReader(f)
         for i in range(5):
             rec = reader.read_record()
             assert rec is not None
-            
-        f = StringIO(text * 5)
-        # test __iter__
-        assert len(list(f)) == 5
-        
+                    
 class TestWarcFile:
     def test_read(self):
         f = WARCFile(fileobj=StringIO(SAMPLE_WARC_RECORD_TEXT))
         assert f.read() is not None
         assert f.read() is None
+        
+    def test_write_gz(self):
+        """Test writing multiple member gzip file."""
+        buffer = StringIO()
+        f = WARCFile(fileobj=buffer, mode="w", compress=True)
+        for i in range(10):
+            record = WARCRecord(payload="hello %d" % i)
+            f.write(record)
+        
+        GZIP_MAGIC_NUMBER = '\037\213'
+        assert buffer.getvalue().count(GZIP_MAGIC_NUMBER) == 10
+        
     
 if __name__ == '__main__':
     TestWARCReader().test_read_header()

@@ -86,7 +86,6 @@ class WARCHeader(CaseInsensitiveDict):
             self['WARC-Date'] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         if "Content-Type" not in self:
             self['Content-Type'] = WARCHeader.CONTENT_TYPES.get(self.type, "application/octet-stream")
-        self.setdefault("Content-Length", "0")        
                         
     def write_to(self, f):
         """Writes this header to a file, in the format specified by WARC.
@@ -112,7 +111,7 @@ class WARCHeader(CaseInsensitiveDict):
     @property
     def type(self): 
         """The value of WARC-Type header."""
-        return self['WARC-Type']
+        return self.get('WARC-Type')
         
     @property
     def record_id(self):
@@ -140,6 +139,9 @@ class WARCRecord(object):
         """
         self.header = header or WARCHeader(headers, defaults=True)
         self.payload = payload
+        
+        if defaults is True and 'WARC-Type' not in self.header:
+            self.header['WARC-Type'] = "response"
         
         if defaults is True and 'Content-Length' not in self.header:
             if payload:
@@ -207,7 +209,7 @@ class WARCRecord(object):
         return f.getvalue()
     
     def __repr__(self):
-        return "<WARCRecord: type=%r record_id=%s>" % (self['type'], self['record_id'])
+        return "<WARCRecord: type=%r record_id=%s>" % (self.type, self['WARC-Record-ID'])
         
     @staticmethod
     def from_response(response):
@@ -239,12 +241,17 @@ class WARCRecord(object):
         return WARCRecord(payload=payload, headers=headers)
 
 class WARCFile:
-    def __init__(self, filename=None, mode=None, fileobj=None):
+    def __init__(self, filename=None, mode=None, fileobj=None, compress=None):
         if fileobj is None:
-            if filename.endswith(".gz"):
-                fileobj = gzip2.open(filename, mode or "rb")
-            else:
-                fileobj = __builtin__.open(filename, mode or "rb")
+            fileobj = __builtin__.open(filename, mode or "rb")
+            mode = fileobj.mode
+        # initiaize compress based on filename, if not already specified
+        if compress is None and filename and filename.endswith(".gz"):
+            compress = True
+        
+        if compress:
+            fileobj = gzip2.GzipFile(fileobj=fileobj, mode=mode)
+        
         self.fileobj = fileobj
         self._reader = None
         
@@ -283,6 +290,7 @@ class WARCFile:
             offset = 0
             for record in self.reader:
                 next_offset = self.tell()
+                self.reader.finish_reading_current_record()
                 yield record, offset, next_offset-offset
                 offset = next_offset
         except:
@@ -336,22 +344,25 @@ class WARCReader:
         if line != expected_line:
             message = message or "Expected %r, found %r" % (expected_line, line)
             raise IOError(message)
+            
+    def finish_reading_current_record(self):
+        # consume the footer from the previous record
+        if self.current_payload:
+            # consume all data from the current_payload before moving to next record
+            self.current_payload.read()
+            self.expect(self.current_payload.fileobj, "\r\n")
+            self.expect(self.current_payload.fileobj, "\r\n")
+            self.current_payload = None
 
     def read_record(self):
+        self.finish_reading_current_record()
+
         if isinstance(self.fileobj, gzip2.GzipFile):
             fileobj = self.fileobj.read_member()
             if fileobj is None:
                 return None
         else:
             fileobj = self.fileobj
-
-        # consume the footer from the previous record
-        if self.current_payload:
-            # consume all data from the current_payload before moving to next record
-            self.current_payload.read()
-            self.expect(fileobj, "\r\n")
-            self.expect(fileobj, "\r\n")
-            self.current_payload = None
             
         header = self.read_header(fileobj)
         if header is None:

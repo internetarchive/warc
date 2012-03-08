@@ -48,8 +48,8 @@ class FilePart:
     Takes a file and length to read from the file and returns a file-object 
     over that part of the file.
     """
-    def __init__(self, file, length):
-        self.file = file
+    def __init__(self, fileobj, length):
+        self.fileobj = fileobj
         self.length = length
         self.offset = 0
         self.buf = "" 
@@ -66,7 +66,7 @@ class FilePart:
             self.buf = self.buf[size:]
         else:
             size = min(size, self.length - self.offset - len(self.buf))
-            content = self.buf + self.file.read(size)
+            content = self.buf + self.fileobj.read(size)
             self.buf = ""
         self.offset += len(content)
         return content
