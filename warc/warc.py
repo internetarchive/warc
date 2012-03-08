@@ -261,8 +261,7 @@ class WARCFile:
             self._reader = WARCReader(self.fileobj)
         return self._reader
     
-    
-    def write(self, warc_record):
+    def write_record(self, warc_record):
         """Adds a warc record to this WARC file.
         """
         warc_record.write_to(self.fileobj)
@@ -271,7 +270,7 @@ class WARCFile:
         if isinstance(self.fileobj, gzip2.GzipFile):
             self.fileobj.close_member()
         
-    def read(self):
+    def read_record(self):
         """Reads a warc record from this WARC file."""
         return self.reader.read_record()
         
@@ -281,21 +280,27 @@ class WARCFile:
     def close(self):
         self.fileobj.close()
         
-    def read2(self):
-        """Returns iterator over (record, offset, size) for each record in the file.
+    def browse(self):
+        """Utility to browse through the records in the warc file.
         
-        TODO: find a better name for this function.
+        This returns an iterator over (record, offset, size) for each record in 
+        the file. If the file is gzip compressed, the offset and size will 
+        corresponds to the compressed file. 
+        
+        The payload of each record is limited to 1MB to keep memory consumption 
+        under control.
         """
-        try:
-            offset = 0
-            for record in self.reader:
-                next_offset = self.tell()
-                self.reader.finish_reading_current_record()
-                yield record, offset, next_offset-offset
-                offset = next_offset
-        except:
-            import traceback
-            traceback.print_exc()
+        offset = 0
+        for record in self.reader:
+            # Just read the first 1MB of the payload.
+            # This will make sure memory consuption is under control and it 
+            # is possible to look at the first MB of the payload, which is 
+            # typically sufficient to read http headers in the payload.
+            record.payload = StringIO(record.payload.read(1024*1024))
+            self.reader.finish_reading_current_record()
+            next_offset = self.tell()
+            yield record, offset, next_offset-offset
+            offset = next_offset
 
     def tell(self):
         """Returns the file offset. If this is a compressed file, then the 
@@ -385,4 +390,3 @@ class WARCReader:
         while record is not None:
             yield record
             record = self.read_record()
-            

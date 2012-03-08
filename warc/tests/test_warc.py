@@ -94,8 +94,8 @@ class TestWARCReader:
 class TestWarcFile:
     def test_read(self):
         f = WARCFile(fileobj=StringIO(SAMPLE_WARC_RECORD_TEXT))
-        assert f.read() is not None
-        assert f.read() is None
+        assert f.read_record() is not None
+        assert f.read_record() is None
         
     def test_write_gz(self):
         """Test writing multiple member gzip file."""
@@ -103,7 +103,7 @@ class TestWarcFile:
         f = WARCFile(fileobj=buffer, mode="w", compress=True)
         for i in range(10):
             record = WARCRecord(payload="hello %d" % i)
-            f.write(record)
+            f.write_record(record)
         
         GZIP_MAGIC_NUMBER = '\037\213'
         assert buffer.getvalue().count(GZIP_MAGIC_NUMBER) == 10

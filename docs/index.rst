@@ -56,8 +56,8 @@ Writing WARC File
 Writing to a warc file is similar to writing to a regular file.::
 
     f = warc.open("test.warc", "w")
-    f.write(warc_record1)
-    f.write(warc_record2)
+    f.write_record(warc_record1)
+    f.write_record(warc_record2)
     f.close()
 
 Working with WARC Header
