@@ -8,19 +8,19 @@ Python library to work with WARC files.
 """
 
 from .arc import ARCFile
-from .warc import WARCFile, WARCRecord, WARCHeader
+from .warc import WARCFile, WARCRecord, WARCHeader, WARCReader
 
 def detect_format(filename):
     """Tries to figure out the type of the file. Return 'warc' for
     WARC files and 'arc' for ARC files"""
-    
+
     if ".arc" in filename:
         return "arc"
-    if ".warc" in filename: 
+    if ".warc" in filename:
         return "warc"
-    
+
     return "unknown"
-        
+
 def open(filename, mode="rb", format = None):
     """Shorthand for WARCFile(filename, mode).
 
