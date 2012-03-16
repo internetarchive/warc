@@ -3,16 +3,14 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-warc: Python library to work with WARC files
-============================================
+warc: Python library to work with ARC and WARC files
+====================================================
 
-WARC (Web ARChive) is a file format for storing web crawls as sequences of content blocks.
+`ARC <http://www.archive.org/web/researcher/ArcFileFormat.php>`_ is a file format for storing web crawls as sequences of content blocks. It was developed in 1996 by Internet Archive. 
 
-The latest version of the specifications can be found at:
+`WARC (Web ARChive) <http://bibnum.bnf.fr/WARC/>`_ is an extension of the ARC file format, which adds more freedom by adding more metadata to each record and allowing named headers.
 
-http://www.scribd.com/doc/4303719/WARC-ISO-28500-final-draft-v018-Zentveld-080618
-
-This is a python library to work with files stored in WARC format.
+This python library works with files stored in both ARC and WARC formats.
 
 Installation
 ------------
@@ -41,13 +39,13 @@ Reading a warc file is as simple as reading a simple file. Instead of returning 
 ::
 
     import warc
-    f = warc.open("test.warc")
+    f = warc.open("test.warc.gz")
     for record in f:
         print record['WARC-Target-URI'], record['Content-Length']
 
 The ``open`` function is a shorthand for :class:`warc.WARCFile`.::
 
-    f = warc.WARCFile("test.warc", "rb")
+    f = warc.WARCFile("test.warc.gz", "rb")
     f = warc.WARCFile(fileobj=StringIO(text))
 
 Writing WARC File
@@ -55,7 +53,7 @@ Writing WARC File
 
 Writing to a warc file is similar to writing to a regular file.::
 
-    f = warc.open("test.warc", "w")
+    f = warc.open("test.warc.gz", "w")
     f.write_record(warc_record1)
     f.write_record(warc_record2)
     f.close()
@@ -137,4 +135,4 @@ License
 
 The warc library is licensed under the BSD 3-clause license. See LICENSE_ file for details.
 
-.. _LICENSE: http://github.com/kennethreitz/requests/blob/master/LICENSE.rst
+.. _LICENSE: https://github.com/internetarchive/warc/blob/master/LICENSE
