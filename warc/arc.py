@@ -330,6 +330,10 @@ class ARCFile(object):
         if not self.header_read:
             self._read_file_header()
         return self._read_arc_record()
+        
+    # For compatability with WARCFile
+    read_record = read
+    write_record = write
 
     def __iter__(self):
         record = self.read()
