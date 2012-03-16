@@ -133,6 +133,6 @@ Or by passing a dictionary of headers. ::
 License
 -------
 
-The warc library is licensed under the BSD 3-clause license. See LICENSE_ file for details.
+The warc library is licensed under GPL v2 license. See LICENSE_ file for details.
 
 .. _LICENSE: https://github.com/internetarchive/warc/blob/master/LICENSE
