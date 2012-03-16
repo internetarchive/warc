@@ -17,7 +17,7 @@ This `warc` library makes it very easy to work with WARC files.::
 Documentation
 -------------
 
-The documentation of the warc library is available at http://readthedocs.org/docs/warc/en/latest/
+The documentation of the warc library is available at http://warc.readthedocs.org/.
 	
 License
 -------
