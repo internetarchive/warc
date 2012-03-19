@@ -72,7 +72,7 @@ class FilePart:
         return content
         
     def _unread(self, content):
-        self.buf = self.buf + content
+        self.buf = content + self.buf
         self.offset -= len(content)
         
     def readline(self):
