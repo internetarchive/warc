@@ -208,7 +208,8 @@ def test_arc_reader_v1():
     v1 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 68\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://archive.org 127.0.0.1 20120302193211 text/plain 8\n\nPayload2")
     arc_file = arc.ARCFile(fileobj = v1)    
 
-    r1, r2 = list(arc_file)
+    r1  = arc_file.read()
+    r2  = arc_file.read()
     
     assert r1['url'] == "http://www.archive.org"
     assert r1['ip_address'] == "127.0.0.1"
