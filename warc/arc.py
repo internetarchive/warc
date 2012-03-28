@@ -332,11 +332,19 @@ class ARCFile(object):
     def _read_arc_record(self):
         "Reads out an arc record, formats it and returns it"
         #XXX:Noufal Stream payload here rather than just read it
-        r = self.fileobj.readline() # Drop the initial newline
-        if r == "":
-            return None
+        # r = self.fileobj.readline() # Drop the initial newline
+        # if r == "":
+        #     return None
+        # header = self.fileobj.readline()
+        # self.fileobj.readline() # Drop the separator newline
+
+        # Strip the initial new lines and read first line
         header = self.fileobj.readline()
-        self.fileobj.readline() # Drop the separator newline
+        while header and header.strip() == "":
+            header = self.fileobj.readline()
+
+        if header == "":
+            return None
 
         if self.version == 1:
             url, ip_address, date, content_type, length = header.split()
