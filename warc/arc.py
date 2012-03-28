@@ -336,7 +336,6 @@ class ARCFile(object):
         # if r == "":
         #     return None
         # header = self.fileobj.readline()
-        # self.fileobj.readline() # Drop the separator newline
 
         # Strip the initial new lines and read first line
         header = self.fileobj.readline()
@@ -345,6 +344,8 @@ class ARCFile(object):
 
         if header == "":
             return None
+
+        self.fileobj.readline() # Drop the separator newline
 
         if self.version == 1:
             url, ip_address, date, content_type, length = header.split()
