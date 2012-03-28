@@ -147,6 +147,36 @@ class ARCRecord(object):
         self.header = header or ARCHeader(**headers)
         self.payload = payload
     
+    @classmethod
+    def from_string(cls, string, version):
+        """
+        Constructs an ARC record from a string and returns it.  
+
+        TODO: It might be best to merge this with the _read_arc_record
+        function rather than reimplement the functionality here.
+        """
+        if string[0] == '\n':  # Drop the initial newline
+            string = string[1:]
+        header, payload = string.split("\n",1)
+        if payload[0] == '\n': # There's an extra
+            payload = payload[1:]
+        
+        if int(version) == 1:
+            url, ip_address, date, content_type, length = header.split()
+            headers = dict(url = url, ip_address = ip_address,
+                           date = date, content_type = content_type,
+                           length = length)
+            arc_header = ARCHeader(**headers)
+        elif int(version) == 2:
+            url, ip_address, date, content_type, result_code, checksum, location, offset, filename, length  = header.split()
+            headers = dict(url = url, ip_address = ip_address, date = date, 
+                           content_type = content_type, result_code = result_code, 
+                           checksum = checksum, location = location, offset = offset, 
+                           filename = filename, length = length)
+            arc_header = ARCHeader(**headers)
+
+        return cls(header = arc_header, payload = payload)
+
     def write_to(self, f, version = 2):
         f.write("\n")
         self.header.write_to(f, version)

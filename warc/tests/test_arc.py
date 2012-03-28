@@ -87,9 +87,9 @@ def test_arc_v1_record_creation():
                            filename = "sample.arc.gz")
     record_v1 = arc.ARCRecord(header, "BlahBlah")
     f = StringIO.StringIO()
-    record_v1.write_to(f)
+    record_v1.write_to(f, 1)
     record_v1_string = f.getvalue()
-    assert record_v1_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
+    assert record_v1_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 500\n\nBlahBlah"
 
 def test_arc_v2_record_creation():
     "Validate ARC V1 record creation"
@@ -103,11 +103,11 @@ def test_arc_v2_record_creation():
                   location = "http://www.archive.org",
                   offset = "300",
                   filename = "sample.arc.gz")
-    record_v1 = arc.ARCRecord(payload = "BlahBlah", headers = header)
+    record_v2 = arc.ARCRecord(payload = "BlahBlah", headers = header)
     f = StringIO.StringIO()
-    record_v1.write_to(f)
-    record_v1_string = f.getvalue()
-    assert record_v1_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
+    record_v2.write_to(f)
+    record_v2_string = f.getvalue()
+    assert record_v2_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
 
 def test_arc_v1_writer():
     "Try writing records to an ARC V1 file. This is what API will feel like to a user of the library"
@@ -241,3 +241,34 @@ def test_arc_reader_v2():
     assert r1['filename'] == "sample.arc.gz"
     assert r1['length'] == "8"
     assert r1.payload == "Payload1"
+
+def test_arc_v1_record_from_string():
+    "Validate ARC V1 record creation from string"
+    record_v1_string = "\nhttp://www.archive.org 127.0.0.1 20120301093000 text/html 500\n\nBlahBlah"
+    record = arc.ARCRecord.from_string(record_v1_string, 1)
+
+    assert record['url'] == "http://www.archive.org"
+    assert record['ip_address'] == "127.0.0.1"
+    assert record['date'] == "20120301093000"
+    assert record['content_type'] == "text/html"
+    assert record['length'] == "500"
+    assert record.payload == "BlahBlah"
+
+
+def xtest_arc_v2_record_from_string():
+    "Validate ARC V2 record creation from string"
+    record_v2_string = "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
+    record = arc.ARCRecord.from_string(record_v2_string, 2)
+
+    assert record['url'] == "http://archive.org"
+    assert record['ip_address'] == "127.0.0.1"
+    assert record['date'] == "20120301093000"
+    assert record['content_type'] == "text/html"
+    assert record['checksum'] == "a123456"
+    assert record['location'] == "http://www.archive.org"
+    assert record['offset'] == "300"
+    assert record['filename'] == "sample.arc.gz"
+    assert record['length'] == "500"
+    assert record.payload == "BlahBlah"
+
+
