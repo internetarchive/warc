@@ -7,7 +7,7 @@ Python library to work with WARC files.
 :copyright: (c) 2012 Internet Archive
 """
 
-from .arc import ARCFile
+from .arc import ARCFile, ARCRecord, ARCHeader
 from .warc import WARCFile, WARCRecord, WARCHeader, WARCReader
 
 def detect_format(filename):
