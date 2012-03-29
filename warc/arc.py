@@ -342,8 +342,11 @@ class ARCFile(object):
 
         if header == "":
             return None
-
-        self.fileobj.readline() # Drop the separator newline
+    
+        # The liveweb-proxy doesn't add these new lines in the ARC
+        # record. Commented this link to make this library work with
+        # that data.
+        #self.fileobj.readline() # Drop the separator newline
 
         if self.version == 1:
             url, ip_address, date, content_type, length = header.split()
