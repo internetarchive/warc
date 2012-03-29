@@ -178,7 +178,6 @@ class ARCRecord(object):
         return cls(header = arc_header, payload = payload)
 
     def write_to(self, f, version = 2):
-        f.write("\n")
         self.header.write_to(f, version)
         # XXX:Noufal
         # The header writes out a \n as part of itself. The spec says
@@ -186,7 +185,6 @@ class ARCRecord(object):
         # newline.  This makes it different from the Alexa crawl
         # samples which don't have this extra \n
         # XXX:Noufal
-        f.write("\n")
         f.write(self.payload)
 
     def __getitem__(self, name):
