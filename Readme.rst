@@ -2,6 +2,8 @@ warc: Python library to work with WARC files
 ============================================
 
 .. image:: https://secure.travis-ci.org/anandology/warc.png?branch=master
+   :alt: build status
+   :target: http://travis-ci.org/anandology/warc
 
 WARC (Web ARChive) is a file format for storing web crawls.
 
