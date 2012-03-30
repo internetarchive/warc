@@ -7,10 +7,14 @@ Provides support for ARC v1 files.
 import __builtin__
 import datetime
 import os
+import re
 import StringIO
 import warnings
 
 from .utils import CaseInsensitiveDict
+
+ARC1_HEADER_RE = re.compile('(?P<url>\S*)\s(?P<ip_address>\S*)\s(?P<date>\S*)\s(?P<content_type>\S*)\s(?P<length>\S*)')
+ARC2_HEADER_RE = re.compile('(?P<url>\S*)\s(?P<ip_address>\S*)\s(?P<date>\S*)\s(?P<content_type>\S*)\s(?P<result_code>\S*)\s(?P<checksum>\S*)\s(?P<location>\S*)\s(?P<offset>\S*)\s(?P<filename>\S*)\s(?P<length>\S*)')
 
 class ARCHeader(CaseInsensitiveDict):
     """
@@ -68,9 +72,9 @@ class ARCHeader(CaseInsensitiveDict):
 
         """
         if version == 1:
-            header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(length)s\n"
+            header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(length)s"
         elif version == 2:
-            header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(result_code)s %(checksum)s %(location)s %(offset)s %(filename)s %(length)s\n"
+            header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(result_code)s %(checksum)s %(location)s %(offset)s %(filename)s %(length)s"
 
         header =  header%dict(url          = self['url'],
                               ip_address   = self['ip_address'],
@@ -155,36 +159,22 @@ class ARCRecord(object):
         TODO: It might be best to merge this with the _read_arc_record
         function rather than reimplement the functionality here.
         """
-        if string[0] == '\n':  # Drop the initial newline
-            string = string[1:]
         header, payload = string.split("\n",1)
         if payload[0] == '\n': # There's an extra
             payload = payload[1:]
-        
         if int(version) == 1:
-            url, ip_address, date, content_type, length = header.split()
-            headers = dict(url = url, ip_address = ip_address,
-                           date = date, content_type = content_type,
-                           length = length)
-            arc_header = ARCHeader(**headers)
+            arc_header_re = ARC1_HEADER_RE
         elif int(version) == 2:
-            url, ip_address, date, content_type, result_code, checksum, location, offset, filename, length  = header.split()
-            headers = dict(url = url, ip_address = ip_address, date = date, 
-                           content_type = content_type, result_code = result_code, 
-                           checksum = checksum, location = location, offset = offset, 
-                           filename = filename, length = length)
-            arc_header = ARCHeader(**headers)
+            arc_header_re = ARC2_HEADER_RE
 
+        matches = arc_header_re.search(header)
+        headers = matches.groupdict()
+        arc_header = ARCHeader(**headers)
         return cls(header = arc_header, payload = payload)
 
     def write_to(self, f, version = 2):
         self.header.write_to(f, version)
-        # XXX:Noufal
-        # The header writes out a \n as part of itself. The spec says
-        # that the header and payload are to be separated by another
-        # newline.  This makes it different from the Alexa crawl
-        # samples which don't have this extra \n
-        # XXX:Noufal
+        f.write("\n") # This separates the header and the body
         f.write(self.payload)
 
     def __getitem__(self, name):
@@ -269,9 +259,9 @@ class ARCFile(object):
             warnings.warn("Using '127.0.0.1' as IP address of machine that's archiving")
             self.file_headers['ip_address'] = "127.0.0.1"
         if self.version == 1:
-            payload = "1 0 %(org)s\nURL IP-address Archive-date Content-type Archive-length\n"%dict(org = self.file_headers['org'])
+            payload = "1 0 %(org)s\nURL IP-address Archive-date Content-type Archive-length"%dict(org = self.file_headers['org'])
         elif self.version == 2:
-            payload = "2 0 %(org)s\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n"
+            payload = "2 0 %(org)s\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length"
         else:
             raise IOError("Can't write an ARC file with version '\"%s\"'"%self.version)
         
@@ -286,18 +276,18 @@ class ARCFile(object):
                            location = "-",
                            offset = str(self.fileobj.tell()),
                            filename = fname)
-        header.write_to(self.fileobj, version = self.version)
-        self.fileobj.write(payload%self.file_headers)
-        self.fileobj.write("\n")
-            
+        arc_file_header_record = ARCRecord(header, payload%self.file_headers)
+        self.write(arc_file_header_record)
+
     def write(self, arc_record):
         "Writes out the given arc record to the file"
         if not self.version:
             self.version = 2
         if not self.header_written:
-            self._write_header()
             self.header_written = True
+            self._write_header()
         arc_record.write_to(self.fileobj, self.version)
+        self.fileobj.write("\n\n") #One newline at the end of the payload and another is the record separator
 
     def _read_file_header(self):
         """Reads out the file header for the arc file. If version was
@@ -306,9 +296,11 @@ class ARCFile(object):
         payload1 = self.fileobj.readline()
         payload2 = self.fileobj.readline()
         version, reserved, organisation = payload1.split(None, 2)
-        self.fileobj.readline() # Lose the newline
+        self.fileobj.readline() # Lose the separator newline
         self.header_read = True
-        
+        # print "--------------------------------------------------"
+        # print header,"\n", payload1, "\n", payload2,"\n"
+        # print "--------------------------------------------------"
         if self.version and int(self.version) != version:
             raise IOError("Version mismatch. Requested version was '%s' but version in file was '%s'"%(self.version, version))
         
@@ -342,26 +334,19 @@ class ARCFile(object):
 
         if header == "":
             return None
-    
-        # The liveweb-proxy doesn't add these new lines in the ARC
-        # record. Commented this link to make this library work with
-        # that data.
-        #self.fileobj.readline() # Drop the separator newline
 
-        if self.version == 1:
-            url, ip_address, date, content_type, length = header.split()
-            headers = dict(url = url, ip_address = ip_address,
-                           date = date, content_type = content_type,
-                           length = length)
-            arc_header = ARCHeader(**headers)
-        elif self.version == 2:
-            url, ip_address, date, content_type, result_code, checksum, location, offset, filename, length  = header.split()
-            headers = dict(url = url, ip_address = ip_address, date = date, 
-                           content_type = content_type, result_code = result_code, 
-                           checksum = checksum, location = location, offset = offset, 
-                           filename = filename, length = length)
-            arc_header = ARCHeader(**headers)
-        payload = self.fileobj.read(int(length))
+        if int(self.version) == 1:
+            arc_header_re = ARC1_HEADER_RE
+        elif int(self.version) == 2:
+            arc_header_re = ARC2_HEADER_RE
+
+        matches = arc_header_re.search(header)
+        headers = matches.groupdict()
+        arc_header = ARCHeader(**headers)
+
+        payload = self.fileobj.read(int(headers['length']))
+
+        self.fileobj.readline() # Munge the separator newline.
 
         return ARCRecord(header = arc_header, payload = payload)
         

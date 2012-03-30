@@ -52,7 +52,7 @@ def test_arc_v1_header_creation():
     f = StringIO.StringIO()
     header.write_to(f, 1)
     header_v1_string = f.getvalue()
-    assert header_v1_string == "http://archive.org 127.0.0.1 20120301093000 text/html 500\n"
+    assert header_v1_string == "http://archive.org 127.0.0.1 20120301093000 text/html 500"
     
     
 def test_arc_v2_header_creation():
@@ -70,7 +70,7 @@ def test_arc_v2_header_creation():
     f = StringIO.StringIO()
     header.write_to(f)
     header_v2_string = f.getvalue()
-    assert header_v2_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n"
+    assert header_v2_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500"
     
     
 def test_arc_v1_record_creation():
@@ -89,7 +89,7 @@ def test_arc_v1_record_creation():
     f = StringIO.StringIO()
     record_v1.write_to(f, 1)
     record_v1_string = f.getvalue()
-    assert record_v1_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 500\n\nBlahBlah"
+    assert record_v1_string == "http://archive.org 127.0.0.1 20120301093000 text/html 500\nBlahBlah"
 
 def test_arc_v2_record_creation():
     "Validate ARC V1 record creation"
@@ -107,7 +107,7 @@ def test_arc_v2_record_creation():
     f = StringIO.StringIO()
     record_v2.write_to(f)
     record_v2_string = f.getvalue()
-    assert record_v2_string == "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
+    assert record_v2_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nBlahBlah"
 
 def test_arc_v1_writer():
     "Try writing records to an ARC V1 file. This is what API will feel like to a user of the library"
@@ -128,7 +128,8 @@ def test_arc_v1_writer():
                       length = len(payload))
         r = arc.ARCRecord(headers = header, payload = payload)
         f.write(r)
-    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 77\n1 0 Internet Archive\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2"
+    expected_value = "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 76\n1 0 Internet Archive\nURL IP-address Archive-date Content-type Archive-length\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\nPayload1\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\nPayload2\n\n"
+    assert opfile.getvalue() == expected_value
     f.close()
 
 def test_arc1_v1_writer_default_headers():
@@ -148,7 +149,8 @@ def test_arc1_v1_writer_default_headers():
                       length = len(payload))
         r = arc.ARCRecord(headers = header, payload = payload)
         f.write(r)
-    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 68\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload2"
+    expected_value = "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 67\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\nPayload1\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\nPayload2\n\n"
+    assert opfile.getvalue() == expected_value
     f.close()
 
 
@@ -176,7 +178,7 @@ def test_arc_v2_writer():
                                filename = "sample.arc.gz")
         r = arc.ARCRecord(headers = header, payload = payload)
         f.write(r)
-    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 114\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nPayload2"
+    assert opfile.getvalue() == "filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 113\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nPayload1\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nPayload2\n\n"
     f.close()
 
 def test_arc_reader_guess_version():
@@ -205,7 +207,7 @@ def test_arc_reader_read_file_headers():
 
 def test_arc_reader_v1():    
     "Make sure that the parser reads out V1 ARC records. (Also tests iterator behaviour)"
-    v1 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 68\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\n\nPayload1\nhttp://archive.org 127.0.0.1 20120302193211 text/plain 8\n\nPayload2")
+    v1 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 68\n1 0 Unknown\nURL IP-address Archive-date Content-type Archive-length\n\n\nhttp://www.archive.org 127.0.0.1 20120302193210 text/html 8\nPayload1\nhttp://archive.org 127.0.0.1 20120302193211 text/plain 8\nPayload2")
     arc_file = arc.ARCFile(fileobj = v1)    
 
     r1  = arc_file.read()
@@ -228,7 +230,7 @@ def test_arc_reader_v1():
 
 def test_arc_reader_v2():    
     "Make sure that the parser reads out V2 ARC records. (Also tests iterator behaviour)"
-    v2 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 114\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 8\n\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 8\n\nPayload2")
+    v2 = StringIO.StringIO("filedesc://sample.arc 127.0.0.1 20120302193210 text/plain 200 - - 0 sample.arc 114\n2 0 Internet Archive\nURL IP-address Archive-date Content-type Result-code Checksum Location Offset Filename Archive-length\n\n\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 8\nPayload1\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 8\nPayload2")
     arc_file = arc.ARCFile(fileobj = v2)    
     r1, r2 = list(arc_file)
     
@@ -245,7 +247,7 @@ def test_arc_reader_v2():
 
 def test_arc_v1_record_from_string():
     "Validate ARC V1 record creation from string"
-    record_v1_string = "\nhttp://www.archive.org 127.0.0.1 20120301093000 text/html 500\n\nBlahBlah"
+    record_v1_string = "http://www.archive.org 127.0.0.1 20120301093000 text/html 500\nBlahBlah"
     record = arc.ARCRecord.from_string(record_v1_string, 1)
 
     assert record['url'] == "http://www.archive.org"
@@ -256,9 +258,9 @@ def test_arc_v1_record_from_string():
     assert record.payload == "BlahBlah"
 
 
-def xtest_arc_v2_record_from_string():
+def test_arc_v2_record_from_string():
     "Validate ARC V2 record creation from string"
-    record_v2_string = "\nhttp://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\n\nBlahBlah"
+    record_v2_string = "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nBlahBlah"
     record = arc.ARCRecord.from_string(record_v2_string, 2)
 
     assert record['url'] == "http://archive.org"

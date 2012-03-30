@@ -30,6 +30,15 @@ def test_open_unknown_file():
         libopen("foo","wb")
 
     
+def test_sample_data():
+    import gzip
+    f = gzip.GzipFile("test_data/alexa_short_header.arc.gz")
+    a = ARCFile(fileobj = f)
+    record = str(a.read())
+    expected = """http://www.killerjo.net:80/robots.txt 211.111.217.29 20110804181142       39
+SSH-2.0-OpenSSH_5.3p1 Debian-3ubuntu3\r\n"""
+    assert record == expected
+
 
     
 
