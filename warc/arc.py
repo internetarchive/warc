@@ -145,11 +145,12 @@ class ARCHeader(CaseInsensitiveDict):
 
         
 class ARCRecord(object):
-    def __init__(self, header = None, payload = None, headers = {}):
+    def __init__(self, header = None, payload = None, headers = {}, version = None):
         if not (header or headers):
             raise TypeError("Can't write create an ARC1 record without a header")
         self.header = header or ARCHeader(**headers)
         self.payload = payload
+        self.version = version
     
     @classmethod
     def from_string(cls, string, version):
@@ -172,7 +173,8 @@ class ARCRecord(object):
         arc_header = ARCHeader(**headers)
         return cls(header = arc_header, payload = payload)
 
-    def write_to(self, f, version = 2):
+    def write_to(self, f, version = None):
+        version = version or self.version or 2
         self.header.write_to(f, version)
         f.write("\n") # This separates the header and the body
         f.write(self.payload)

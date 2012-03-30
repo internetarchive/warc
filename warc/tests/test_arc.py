@@ -274,4 +274,27 @@ def test_arc_v2_record_from_string():
     assert record['length'] == "500"
     assert record.payload == "BlahBlah"
 
+def test_arc_record_versions():
+    "Check initialising an ARCRecord with a version to see if it outputs stuff properly"
+    header = dict(url = "http://archive.org",
+                  ip_address = "127.0.0.1", 
+                  date = "20120301093000", 
+                  content_type = "text/html", 
+                  length = "500",
+                  result_code = "200",
+                  checksum = "a123456", 
+                  location = "http://www.archive.org",
+                  offset = "300",
+                  filename = "sample.arc.gz")
+    record_1 = arc.ARCRecord(payload = "BlahBlah", headers = header, version = 1)
+    record_2 = arc.ARCRecord(payload = "BlahBlah", headers = header, version = 2)
+    f = StringIO.StringIO()
+    record_1.write_to(f)
+    record_string = f.getvalue()
+    assert record_string == "http://archive.org 127.0.0.1 20120301093000 text/html 500\nBlahBlah"
+
+    f = StringIO.StringIO()
+    record_2.write_to(f)
+    record_string = f.getvalue()
+    assert record_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nBlahBlah"
 
