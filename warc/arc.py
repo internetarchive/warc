@@ -171,7 +171,7 @@ class ARCRecord(object):
         matches = arc_header_re.search(header)
         headers = matches.groupdict()
         arc_header = ARCHeader(**headers)
-        return cls(header = arc_header, payload = payload)
+        return cls(header = arc_header, payload = payload, version = version)
 
     def write_to(self, f, version = None):
         version = version or self.version or 2
