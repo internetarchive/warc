@@ -177,7 +177,15 @@ class ARCRecord(object):
         version = version or self.version or 2
         self.header.write_to(f, version)
         f.write("\n") # This separates the header and the body
-        f.write(self.payload)
+        if isinstance(self.payload, str): #Usually used for small payloads
+            f.write(self.payload)
+        elif hasattr(self.payload, "read"): #Used for large payloads where we give a file like object
+            chunk_size = 10 * 1024 * 1024 # Read 10MB by 10MB
+            d = self.payload.read(chunk_size)
+            while d:
+                f.write(d)
+                d = self.payload.read(chunk_size)
+        f.write("\n")
 
     def __getitem__(self, name):
         return self.header[name]
@@ -289,7 +297,7 @@ class ARCFile(object):
             self.header_written = True
             self._write_header()
         arc_record.write_to(self.fileobj, self.version)
-        self.fileobj.write("\n\n") #One newline at the end of the payload and another is the record separator
+        self.fileobj.write("\n") # Record separator
 
     def _read_file_header(self):
         """Reads out the file header for the arc file. If version was
