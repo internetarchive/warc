@@ -42,7 +42,7 @@ class ARCHeader(CaseInsensitiveDict):
 
     """
     def __init__(self, url = "",  ip_address = "",  date = "",  content_type = "",  
-                 result_code = "",  checksum = "",  location = "",  offset = "",  filename = "",  length = ""):
+                 result_code = "",  checksum = "",  location = "",  offset = "",  filename = "",  length = "", version = 2):
 
         if isinstance(date, datetime.datetime):
             date = date.strftime("%Y%m%d%H%M%S")
@@ -50,6 +50,8 @@ class ARCHeader(CaseInsensitiveDict):
             datetime.datetime.strptime(date, "%Y%m%d%H%M%S")
         except ValueError:
             raise ValueError("Couldn't parse the date '%s' in file header"%date)
+
+        self.version = version
 
         CaseInsensitiveDict.__init__(self, 
                                      url = url, 
@@ -63,7 +65,7 @@ class ARCHeader(CaseInsensitiveDict):
                                      filename = filename,
                                      length = length)
     
-    def write_to(self, f, version = 2):
+    def write_to(self, f, version = None):
         """
         Writes out the arc header to the file like object `f`. 
 
@@ -71,6 +73,8 @@ class ARCHeader(CaseInsensitiveDict):
         otherwise (and this is default), it outputs a v2 header.
 
         """
+        if not version:
+            version = self.version
         if version == 1:
             header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(length)s"
         elif version == 2:
@@ -148,7 +152,7 @@ class ARCRecord(object):
     def __init__(self, header = None, payload = None, headers = {}, version = None):
         if not (header or headers):
             raise TypeError("Can't write create an ARC1 record without a header")
-        self.header = header or ARCHeader(**headers)
+        self.header = header or ARCHeader(version = version, **headers)
         self.payload = payload
         self.version = version
     
