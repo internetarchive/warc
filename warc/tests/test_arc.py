@@ -89,7 +89,7 @@ def test_arc_v1_record_creation():
     f = StringIO.StringIO()
     record_v1.write_to(f, 1)
     record_v1_string = f.getvalue()
-    assert record_v1_string == "http://archive.org 127.0.0.1 20120301093000 text/html 500\nBlahBlah"
+    assert record_v1_string == "http://archive.org 127.0.0.1 20120301093000 text/html 500\nBlahBlah\n"
 
 def test_arc_v2_record_creation():
     "Validate ARC V1 record creation"
@@ -107,7 +107,7 @@ def test_arc_v2_record_creation():
     f = StringIO.StringIO()
     record_v2.write_to(f)
     record_v2_string = f.getvalue()
-    assert record_v2_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nBlahBlah"
+    assert record_v2_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nBlahBlah\n"
 
 def test_arc_v1_writer():
     "Try writing records to an ARC V1 file. This is what API will feel like to a user of the library"
@@ -291,10 +291,10 @@ def test_arc_record_versions():
     f = StringIO.StringIO()
     record_1.write_to(f)
     record_string = f.getvalue()
-    assert record_string == "http://archive.org 127.0.0.1 20120301093000 text/html 500\nBlahBlah"
+    assert record_string == "http://archive.org 127.0.0.1 20120301093000 text/html 500\nBlahBlah\n"
 
     f = StringIO.StringIO()
     record_2.write_to(f)
     record_string = f.getvalue()
-    assert record_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nBlahBlah"
+    assert record_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nBlahBlah\n"
 
