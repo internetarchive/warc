@@ -46,10 +46,11 @@ class ARCHeader(CaseInsensitiveDict):
 
         if isinstance(date, datetime.datetime):
             date = date.strftime("%Y%m%d%H%M%S")
-        try:
-            datetime.datetime.strptime(date, "%Y%m%d%H%M%S")
-        except ValueError:
-            raise ValueError("Couldn't parse the date '%s' in file header"%date)
+        else:
+            try:
+                datetime.datetime.strptime(date, "%Y%m%d%H%M%S")
+            except ValueError:
+                raise ValueError("Couldn't parse the date '%s' in file header"%date)
 
         self.version = version
 
