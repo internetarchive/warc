@@ -12,10 +12,10 @@ import datetime
 import uuid
 import logging
 import re
-import gzip2
 from cStringIO import StringIO
 import hashlib
 
+from . import gzip2
 from .utils import CaseInsensitiveDict, FilePart
 
 class WARCHeader(CaseInsensitiveDict):
@@ -137,11 +137,12 @@ class WARCRecord(object):
     def __init__(self, header=None, payload=None,  headers={}, defaults=True):
         """Creates a new WARC record. 
         """
+
+        if header is None and defaults is True:
+            headers.setdefault("WARC-Type", "response")
+
         self.header = header or WARCHeader(headers, defaults=True)
         self.payload = payload
-        
-        if defaults is True and 'WARC-Type' not in self.header:
-            self.header['WARC-Type'] = "response"
         
         if defaults is True and 'Content-Length' not in self.header:
             if payload:
