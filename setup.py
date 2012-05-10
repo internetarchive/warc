@@ -7,7 +7,7 @@ setup(
     version="0.2.0",
     description="Python library to work with ARC and WARC files",
     long_description=open('Readme.rst').read(),
-    license='BSD',
+    license='GPLv2',
     author="Internet Archive",
     author_email="info@archive.org",
     url="http://github.com/internetarchive/warc",
