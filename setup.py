@@ -4,13 +4,13 @@ from setuptools import setup
 
 setup(
     name="warc",
-    version="0.2-dev",
-    description="Python library to work with WARC files",
+    version="0.2.0",
+    description="Python library to work with ARC and WARC files",
     long_description=open('Readme.rst').read(),
     license='BSD',
-    author="Anand Chitipothu",
-    author_email="anandology@gmail.com",
-    url="http://github.com/anandology/warc",
+    author="Internet Archive",
+    author_email="info@archive.org",
+    url="http://github.com/internetarchive/warc",
     packages=["warc"],
     platforms=["any"],
     package_data={'': ["LICENSE", "Readme.rst"]},
