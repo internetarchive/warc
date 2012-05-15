@@ -292,7 +292,8 @@ class ARCFile(object):
                            offset = str(self.fileobj.tell()),
                            filename = fname)
         arc_file_header_record = ARCRecord(header, payload%self.file_headers)
-        self.write(arc_file_header_record)
+        arc_file_header_record.write_to(self.fileobj, self.version)
+        self.fileobj.write("\n") # record separator
 
     def write(self, arc_record):
         "Writes out the given arc record to the file"
