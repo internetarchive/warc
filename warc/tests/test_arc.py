@@ -153,6 +153,16 @@ def test_arc1_v1_writer_default_headers():
     assert opfile.getvalue() == expected_value
     f.close()
 
+def test_arc_v1_writer_write_headers():
+    """Test to make sure header is written just once.
+    """
+    f = StringIO.StringIO()
+    f.name = "sample.arc"
+    afile = arc.ARCFile(fileobj=f, version=1)
+    afile._write_header()
+
+    # Make sure header is written only once
+    assert f.getvalue().count("filedesc://") == 1
 
 def test_arc_v2_writer():
     "Try writing records to an ARC V2 file. This is what API will feel like to a user of the library"
