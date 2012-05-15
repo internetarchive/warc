@@ -253,6 +253,13 @@ class ARCFile(object):
             fileobj = __builtin__.open(filename, mode or "rb")
         self.fileobj = fileobj
 
+        self.filename = filename
+        if self.filename is None:
+            if hasattr(self.fileobj, "name"):
+                self.filename = self.fileobj.name
+            else:
+                self.filename = ""
+
         if version != None and int(version) not in (1, 2):
             raise TypeError("ARC version has to be 1 or 2")
         self.version = version
@@ -280,7 +287,7 @@ class ARCFile(object):
         else:
             raise IOError("Can't write an ARC file with version '\"%s\"'"%self.version)
         
-        fname = os.path.basename(self.fileobj.name)
+        fname = os.path.basename(self.filename)
         header = ARCHeader(url = "filedesc://%s"%fname,
                            ip_address = self.file_headers['ip_address'], 
                            date = self.file_headers['date'],

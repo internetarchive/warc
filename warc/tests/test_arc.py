@@ -153,17 +153,6 @@ def test_arc1_v1_writer_default_headers():
     assert opfile.getvalue() == expected_value
     f.close()
 
-def test_arc_v1_writer_write_headers():
-    """Test to make sure header is written just once.
-    """
-    f = StringIO.StringIO()
-    f.name = "sample.arc"
-    afile = arc.ARCFile(fileobj=f, version=1)
-    afile._write_header()
-
-    # Make sure header is written only once
-    assert f.getvalue().count("filedesc://") == 1
-
 def test_arc_v2_writer():
     "Try writing records to an ARC V2 file. This is what API will feel like to a user of the library"
     now = "20120302193210"
@@ -308,3 +297,31 @@ def test_arc_record_versions():
     record_string = f.getvalue()
     assert record_string == "http://archive.org 127.0.0.1 20120301093000 text/html 200 a123456 http://www.archive.org 300 sample.arc.gz 500\nBlahBlah\n"
 
+
+class TestARCFile:
+    def test_write_headers(self):
+        """Test to make sure header is written just once.
+        """
+        f = StringIO.StringIO()
+        f.name = "sample.arc"
+        afile = arc.ARCFile(fileobj=f, version=1)
+        afile._write_header()
+        
+        # Make sure header is written only once
+        assert f.getvalue().count("filedesc://") == 1
+
+    def test_filename(self):
+        """If filename is specified as argument to ARCFile, it should be used."""
+        f = StringIO.StringIO()
+        afile = arc.ARCFile(fileobj=f, filename="sample.arc", version=1)
+        afile._write_header()
+        assert "sample.arc" in f.getvalue()
+
+    def test_no_filename(self):
+        """should be able to write ARCFile even if there is no filename."""
+        f = StringIO.StringIO()
+        afile = arc.ARCFile(fileobj=f, version=1)
+        afile._write_header()
+        # filename should be empty
+        assert f.getvalue().startswith("filedesc:// ")
+ 
