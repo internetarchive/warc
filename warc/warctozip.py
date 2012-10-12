@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import warc
 import zipfile
 from optparse import OptionParser
@@ -18,16 +17,22 @@ def httpparse(fp):
     return response
 
 
-print sys.argv[1] 
-file = zipfile.ZipFile("test.zip", "w")
+def warc_to_zip():
+    warcfile = sys.argv[1]
+    zipout = sys.argv[2]
 
-f = warc.open( sys.argv[1])
-for record in f:
-    print record.header.keys()
-    if record.header.has_key('warc-target-uri'):
-        u = urlparse(record['WARC-Target-URI'])
-        name = "{}{}".format(u.scheme, u.path)
-        r = httpparse(record.payload)
-        file.writestr(name, r.read())
+    file = zipfile.ZipFile(zipout, "w")
 
-file.close()
+    f = warc.WARCFile( warcfile, "rb" )
+    for record in f:
+        print record.header.keys()
+        if record.header.has_key('warc-target-uri'):
+            u = urlparse(record['WARC-Target-URI'])
+            name = "{}{}".format(u.scheme, u.path)
+            r = httpparse(record.payload)
+            file.writestr(name, r.read())
+
+    file.close()
+
+if __name__ == '__main__':
+    warc_to_zip()

@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="warc",
-    version="0.2.0",
+    version="0.3.0",
     description="Python library to work with ARC and WARC files",
     long_description=open('Readme.rst').read(),
     license='GPLv2',
@@ -23,4 +23,9 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
     ],
+    entry_points = {
+        'console_scripts': [
+            'warctozip = warc.warctozip:warc_to_zip',
+        ]
+    }
 )
