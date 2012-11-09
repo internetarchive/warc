@@ -251,6 +251,14 @@ class ARCFile(object):
         """
         if fileobj is None:
             fileobj = __builtin__.open(filename, mode or "rb")
+            mode = fileobj.mode
+        # initialize compress based on filename, if not already specified
+        if compress is None and filename and filename.endswith(".gz"):
+            compress = True
+
+        if compress:
+            fileobj = gzip2.GzipFile(fileobj=fileobj, mode=mode)
+
         self.fileobj = fileobj
 
         if version != None and int(version) not in (1, 2):
