@@ -259,6 +259,7 @@ class ARCFile(object):
         self.file_headers = file_headers
         self.header_written = False
         self.header_read = False
+        self.file_meta = ''
 
         
     def _write_header(self):
@@ -311,7 +312,6 @@ class ARCFile(object):
         payload1 = self.fileobj.readline()
         payload2 = self.fileobj.readline()
         version, reserved, organisation = payload1.split(None, 2)
-        self.fileobj.readline() # Lose the separator newline
         self.header_read = True
         # print "--------------------------------------------------"
         # print header,"\n", payload1, "\n", payload2,"\n"
@@ -333,6 +333,14 @@ class ARCFile(object):
             self.version = 2
         else:
             raise IOError("Unknown ARC version '%s'"%version)
+
+        current = len(payload1) + len(payload2)
+        self.file_meta = ''
+        while current < int(length):
+            line = self.fileobj.readline()
+            current = current + len(line)
+            self.file_meta = self.file_meta + line
+        self.fileobj.readline() # Lose the separator newline
 
     def _read_arc_record(self):
         "Reads out an arc record, formats it and returns it"
