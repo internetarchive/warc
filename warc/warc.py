@@ -237,7 +237,7 @@ class WARCRecord(object):
         
         headers = {
             "WARC-Type": "response",
-            "WARC-Target-URI": response.request.full_url.encode('utf-8')
+            "WARC-Target-URI": response.request.url.encode('utf-8')
         }
         return WARCRecord(payload=payload, headers=headers)
 
