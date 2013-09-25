@@ -4,3 +4,4 @@ docs/_build/
 build/
 .coverage
 htmlcov/
+virtualenv
