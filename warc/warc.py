@@ -311,10 +311,11 @@ class WARCFile:
             return self.fileobj.fileobj.tell()
         else:
             return self.fileobj.tell()            
-    
+
+
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
-    RE_HEADER = re.compile(r"([a-zA-Z_\-]+): *(.*)\r\n")
+    RE_HEADER = re.compile(r"([\w\-]+): *(.*)\r\n")
     SUPPORTED_VERSIONS = ["1.0"]
     
     def __init__(self, fileobj):
