@@ -59,6 +59,7 @@ SAMPLE_WARC_RECORD_TEXT = (
     "Content-Type: application/http; msgtype=response\r\n" +
     "P3P: policyref=\"http://www.w3.org/2001/05/P3P/p3p.xml\"\r\n" +
     "Page.Ly: v4.1\r\n" +
+    "BadHeader: \n" +
     "WARC-Type: response\r\n" +
     "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n" +
     "WARC-Target-URI: http://example.com/\r\n" +
@@ -75,6 +76,7 @@ class TestWARCReader:
         assert h.record_id == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
         assert h.type == "response"
         assert h.content_length == 10
+        assert 'BadHeader' not in h
 
     def test_empty(self):
         reader = WARCReader(StringIO(""))

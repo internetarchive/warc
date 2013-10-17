@@ -18,6 +18,8 @@ import hashlib
 from . import gzip2
 from .utils import CaseInsensitiveDict, FilePart
 
+logger = logging.getLogger(__name__)
+
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
 
@@ -340,10 +342,11 @@ class WARCReader:
             if line == "\r\n": # end of headers
                 break
             m = self.RE_HEADER.match(line)
-            if not m:
-                raise IOError("Bad header line: %r" % line)
-            name, value = m.groups()
-            headers[name] = value
+            if m:
+                name, value = m.groups()
+                headers[name] = value
+            else:
+                logger.warning("Bad header line: %r" % line)
         return WARCHeader(headers)
 
     def expect(self, fileobj, expected_line, message=None):
