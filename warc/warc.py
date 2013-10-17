@@ -21,17 +21,17 @@ from .utils import CaseInsensitiveDict, FilePart
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
 
-    It provides dictionary like interface for accessing the headers.    
-    
+    It provides dictionary like interface for accessing the headers.
+
     The following mandatory fields are accessible also as attributes.
-    
+
         * h.record_id == h['WARC-Record-ID']
         * h.content_length == int(h['Content-Length'])
         * h.date == h['WARC-Date']
         * h.type == h['WARC-Type']
-        
-    :params headers: dictionary of headers. 
-    :params defaults: If True, important headers like WARC-Record-ID, 
+
+    :params headers: dictionary of headers.
+    :params defaults: If True, important headers like WARC-Record-ID,
                       WARC-Date, Content-Type and Content-Length are
                       initialized to automatically if not already present.
     TODO:
@@ -40,9 +40,9 @@ class WARCHeader(CaseInsensitiveDict):
         * url
         * ip_address
         * date (date of archival)
-        * content_type 
+        * content_type
         * result_code (response code)
-        * checksum 
+        * checksum
         * location
         * offset (offset from beginning of file to recrod)
         * filename (name of arc file)
@@ -53,7 +53,7 @@ class WARCHeader(CaseInsensitiveDict):
                         response='application/http; msgtype=response',
                         request='application/http; msgtype=request',
                         metadata='application/warc-fields')
-                            
+
     KNOWN_HEADERS = {
         "type": "WARC-Type",
         "date": "WARC-Date",
@@ -65,16 +65,16 @@ class WARCHeader(CaseInsensitiveDict):
         "content_type": "Content-Type",
         "content_length": "Content-Length"
     }
-                            
+
     def __init__(self, headers, defaults=False):
         self.version = "WARC/1.0"
         CaseInsensitiveDict.__init__(self, headers)
         if defaults:
             self.init_defaults()
-        
+
     def init_defaults(self):
         """Initializes important headers to default values, if not already specified.
-        
+
         The WARC-Record-ID header is set to a newly generated UUID.
         The WARC-Date header is set to the current datetime.
         The Content-Type is set based on the WARC-Type header.
@@ -86,7 +86,7 @@ class WARCHeader(CaseInsensitiveDict):
             self['WARC-Date'] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         if "Content-Type" not in self:
             self['Content-Type'] = WARCHeader.CONTENT_TYPES.get(self.type, "application/octet-stream")
-                        
+
     def write_to(self, f):
         """Writes this header to a file, in the format specified by WARC.
         """
@@ -99,7 +99,7 @@ class WARCHeader(CaseInsensitiveDict):
             f.write(": ")
             f.write(value)
             f.write("\r\n")
-        
+
         # Header ends with an extra CRLF
         f.write("\r\n")
 
@@ -107,27 +107,27 @@ class WARCHeader(CaseInsensitiveDict):
     def content_length(self):
         """The Content-Length header as int."""
         return int(self['Content-Length'])
-        
+
     @property
-    def type(self): 
+    def type(self):
         """The value of WARC-Type header."""
         return self.get('WARC-Type')
-        
+
     @property
     def record_id(self):
         """The value of WARC-Record-ID header."""
         return self['WARC-Record-ID']
-        
+
     @property
     def date(self):
         """The value of WARC-Date header."""
         return self['WARC-Date']
-    
+
     def __str__(self):
         f = StringIO()
         self.write_to(f)
         return f.getvalue()
-        
+
     def __repr__(self):
         return "<WARCHeader: type=%r, record_id=%r>" % (self.type, self.record_id)
 
@@ -135,7 +135,7 @@ class WARCRecord(object):
     """The WARCRecord object represents a WARC Record.
     """
     def __init__(self, header=None, payload=None,  headers={}, defaults=True):
-        """Creates a new WARC record. 
+        """Creates a new WARC record.
         """
 
         if header is None and defaults is True:
@@ -143,26 +143,26 @@ class WARCRecord(object):
 
         self.header = header or WARCHeader(headers, defaults=True)
         self.payload = payload
-        
+
         if defaults is True and 'Content-Length' not in self.header:
             if payload:
                 self.header['Content-Length'] = str(len(payload))
             else:
                 self.header['Content-Length'] = "0"
-                
+
         if defaults is True and 'WARC-Payload-Digest' not in self.header:
             self.header['WARC-Payload-Digest'] = self._compute_digest(payload)
-            
+
     def _compute_digest(self, payload):
         return "sha1:" + hashlib.sha1(payload).hexdigest()
-                
+
     def write_to(self, f):
         self.header.write_to(f)
         f.write(self.payload)
         f.write("\r\n")
         f.write("\r\n")
         f.flush()
-        
+
     @property
     def type(self):
         """Record type"""
@@ -172,11 +172,11 @@ class WARCRecord(object):
     def url(self):
         """The value of the WARC-Target-URI header if the record is of type "response"."""
         return self.header.get('WARC-Target-URI')
-    
+
     @property
     def ip_address(self):
-        """The IP address of the host contacted to retrieve the content of this record. 
-        
+        """The IP address of the host contacted to retrieve the content of this record.
+
         This value is available from the WARC-IP-Address header."""
         return self.header.get('WARC-IP-Address')
 
@@ -184,46 +184,46 @@ class WARCRecord(object):
     def date(self):
         """UTC timestamp of the record."""
         return self.header.get("WARC-Date")
-    
+
     @property
     def checksum(self):
         return self.header.get('WARC-Payload-Digest')
-        
+
     @property
     def offset(self):
         """Offset of this record in the warc file from which this record is read.
         """
         pass
-        
+
     def __getitem__(self, name):
         return self.header[name]
 
     def __setitem__(self, name, value):
         self.header[name] = value
-        
+
     def __contains__(self, name):
         return name in self.header
-        
+
     def __str__(self):
         f = StringIO()
         self.write_to(f)
         return f.getvalue()
-    
+
     def __repr__(self):
         return "<WARCRecord: type=%r record_id=%s>" % (self.type, self['WARC-Record-ID'])
-        
+
     @staticmethod
     def from_response(response):
         """Creates a WARCRecord from given response object.
 
-        This must be called before reading the response. The response can be 
+        This must be called before reading the response. The response can be
         read after this method is called.
-        
+
         :param response: An instance of :class:`requests.models.Response`.
         """
         # Get the httplib.HTTPResponse object
         http_response = response.raw._original_response
-        
+
         # HTTP status line, headers and body as strings
         status_line = "HTTP/1.1 %d %s" % (http_response.status, http_response.reason)
         headers = str(http_response.msg)
@@ -234,7 +234,7 @@ class WARCRecord(object):
 
         # Build the payload to create warc file.
         payload = status_line + "\r\n" + headers + "\r\n" + body
-        
+
         headers = {
             "WARC-Type": "response",
             "WARC-Target-URI": response.request.full_url.encode('utf-8')
@@ -249,19 +249,19 @@ class WARCFile:
         # initiaize compress based on filename, if not already specified
         if compress is None and filename and filename.endswith(".gz"):
             compress = True
-        
+
         if compress:
             fileobj = gzip2.GzipFile(fileobj=fileobj, mode=mode)
-        
+
         self.fileobj = fileobj
         self._reader = None
-        
+
     @property
     def reader(self):
         if self._reader is None:
             self._reader = WARCReader(self.fileobj)
         return self._reader
-    
+
     def write_record(self, warc_record):
         """Adds a warc record to this WARC file.
         """
@@ -270,32 +270,32 @@ class WARCFile:
         # so that each record can be read independetly.
         if isinstance(self.fileobj, gzip2.GzipFile):
             self.fileobj.close_member()
-        
+
     def read_record(self):
         """Reads a warc record from this WARC file."""
         return self.reader.read_record()
-        
+
     def __iter__(self):
         return iter(self.reader)
-        
+
     def close(self):
         self.fileobj.close()
-        
+
     def browse(self):
         """Utility to browse through the records in the warc file.
-        
-        This returns an iterator over (record, offset, size) for each record in 
-        the file. If the file is gzip compressed, the offset and size will 
-        corresponds to the compressed file. 
-        
-        The payload of each record is limited to 1MB to keep memory consumption 
+
+        This returns an iterator over (record, offset, size) for each record in
+        the file. If the file is gzip compressed, the offset and size will
+        corresponds to the compressed file.
+
+        The payload of each record is limited to 1MB to keep memory consumption
         under control.
         """
         offset = 0
         for record in self.reader:
             # Just read the first 1MB of the payload.
-            # This will make sure memory consuption is under control and it 
-            # is possible to look at the first MB of the payload, which is 
+            # This will make sure memory consuption is under control and it
+            # is possible to look at the first MB of the payload, which is
             # typically sufficient to read http headers in the payload.
             record.payload = StringIO(record.payload.read(1024*1024))
             self.reader.finish_reading_current_record()
@@ -304,36 +304,36 @@ class WARCFile:
             offset = next_offset
 
     def tell(self):
-        """Returns the file offset. If this is a compressed file, then the 
+        """Returns the file offset. If this is a compressed file, then the
         offset in the compressed file is returned.
         """
         if isinstance(self.fileobj, gzip2.GzipFile):
             return self.fileobj.fileobj.tell()
         else:
-            return self.fileobj.tell()            
+            return self.fileobj.tell()
 
 
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
-    RE_HEADER = re.compile(r"([\w\-]+): *(.*)\r\n")
+    RE_HEADER = re.compile(r"([\w\-\.]+): *(.*)\r\n")
     SUPPORTED_VERSIONS = ["1.0"]
-    
+
     def __init__(self, fileobj):
         self.fileobj = fileobj
         self.current_payload = None
-        
+
     def read_header(self, fileobj):
         version_line = fileobj.readline()
         if not version_line:
             return None
-            
+
         m = self.RE_VERSION.match(version_line)
         if not m:
             raise IOError("Bad version line: %r" % version_line)
         version = m.group(1)
         if version not in self.SUPPORTED_VERSIONS:
             raise IOError("Unsupported WARC version: %s" % version)
-            
+
         headers = {}
         while True:
             line = fileobj.readline()
@@ -345,13 +345,13 @@ class WARCReader:
             name, value = m.groups()
             headers[name] = value
         return WARCHeader(headers)
-        
+
     def expect(self, fileobj, expected_line, message=None):
         line = fileobj.readline()
         if line != expected_line:
             message = message or "Expected %r, found %r" % (expected_line, line)
             raise IOError(message)
-            
+
     def finish_reading_current_record(self):
         # consume the footer from the previous record
         if self.current_payload:
@@ -370,11 +370,11 @@ class WARCReader:
                 return None
         else:
             fileobj = self.fileobj
-            
+
         header = self.read_header(fileobj)
         if header is None:
             return None
-        
+
         self.current_payload = FilePart(fileobj, header.content_length)
         record = WARCRecord(header, self.current_payload, defaults=False)
         return record
