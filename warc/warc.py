@@ -314,7 +314,6 @@ class WARCFile:
         else:
             return self.fileobj.tell()
 
-
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
     RE_HEADER = re.compile(r"([\w\-\.]+): *(.*)\r\n")
@@ -395,3 +394,63 @@ class WARCReader:
         while record is not None:
             yield record
             record = self.read_record()
+
+
+class SimpleWARCReader(WARCReader):
+    RE_HEADER = re.compile(r"([\w\-]+): *(.*)\r?\n")
+
+    def __init__(self, fileobj):
+        self.fileobj = fileobj
+        self.pos = 0
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        record = self.read_record()
+        if record is None:
+            raise StopIteration
+        return record
+
+    def read_record(self):
+        try:
+            self._read_version()
+        except AssertionError:
+            return
+        headers = self._read_header()
+        body = self._read_body()
+        return (headers, body)
+
+    def _read_version(self):
+        self.fileobj.seek(self.pos)
+        line = self.fileobj.readline()
+        assert line == 'WARC/1.0\r\n'
+
+    def _read_header(self):
+        headers = {}
+        while True:
+            line = self.fileobj.readline()
+            if line == "\r\n":  # end of headers
+                break
+            m = self.RE_HEADER.match(line)
+            if not m:
+                logging.warning("Bad header line: %r" % line)
+                continue
+            name, value = m.groups()
+            headers[name] = value.strip()
+        return headers
+
+    def _read_body(self):
+        body = ''
+        line = ''
+        while not (line == 'WARC/1.0\r\n' and body.endswith('\r\n\r\n')):
+            body += line
+            pos = self.fileobj.tell()
+            line = self.fileobj.readline()
+            if self.fileobj.tell() == pos:
+                break
+        self.pos = pos
+        return body.strip('\r\n')
+
+    def close(self):
+        self.fileobj.close()

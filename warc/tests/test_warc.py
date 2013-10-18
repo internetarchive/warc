@@ -1,6 +1,8 @@
-from ..warc import WARCReader, WARCHeader, WARCRecord, WARCFile
+from ..warc import WARCReader, WARCHeader, WARCRecord, WARCFile, \
+    SimpleWARCReader
 
 from StringIO import StringIO
+
 
 class TestWARCHeader:
     def test_attrs(self):
@@ -94,6 +96,34 @@ class TestWARCReader:
         for i in range(5):
             rec = reader.read_record()
             assert rec is not None
+
+
+class TestSimpleWARCReader:
+    def test_read_header1(self):
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT)
+        h, b = SimpleWARCReader(f).read_record()
+        assert h['WARC-Date'] == "2012-02-10T16:15:52Z"
+        assert h['WARC-Record-ID'] == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
+        assert h['WARC-Type'] == "response"
+        assert h['Content-Length'] == '10'
+
+    def test_empty(self):
+        reader = WARCReader(StringIO(""))
+        assert reader.read_record() is None
+
+    def test_read_record(self):
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT)
+        reader = SimpleWARCReader(f)
+        headers, body = reader.read_record()
+        assert body == "Helloworld"
+
+    def read_multiple_records(self):
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT * 5)
+        reader = SimpleWARCReader(f)
+        for i in range(5):
+            rec = reader.read_record()
+            assert rec is not None
+
 
 class TestWarcFile:
     def test_read(self):
