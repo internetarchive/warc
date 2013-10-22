@@ -398,10 +398,11 @@ class WARCReader:
 
 class SimpleWARCReader(WARCReader):
     RE_HEADER = re.compile(r"([\w\-]+): *(.*)\r?\n")
+    VERSION = "WARC/1.0\r\n"
 
-    def __init__(self, fileobj):
-        self.fileobj = fileobj
-        self.pos = 0
+    def __init__(self, datasource):
+        self.datasource = datasource
+        self.stack = []
 
     def __iter__(self):
         return self
@@ -421,15 +422,22 @@ class SimpleWARCReader(WARCReader):
         body = self._read_body()
         return (headers, body)
 
+    def _next_line(self):
+        if self.stack:
+            return self.stack.pop()
+        return self._read_line()
+
+    def _read_line(self):
+        raise NotImplementedError()
+
     def _read_version(self):
-        self.fileobj.seek(self.pos)
-        line = self.fileobj.readline()
-        assert line == 'WARC/1.0\r\n'
+        line = self._next_line()
+        assert line == self.VERSION
 
     def _read_header(self):
         headers = {}
         while True:
-            line = self.fileobj.readline()
+            line = self._next_line()
             if line == "\r\n":  # end of headers
                 break
             m = self.RE_HEADER.match(line)
@@ -441,16 +449,32 @@ class SimpleWARCReader(WARCReader):
         return headers
 
     def _read_body(self):
-        body = ''
-        line = ''
-        while not (line == 'WARC/1.0\r\n' and body.endswith('\r\n\r\n')):
+        body = line = ''
+        while not (line == self.VERSION and body.endswith('\r\n\r\n')):
             body += line
-            pos = self.fileobj.tell()
-            line = self.fileobj.readline()
-            if self.fileobj.tell() == pos:
+            line = self._next_line()
+            if line == '':
                 break
-        self.pos = pos
         return body.strip('\r\n')
 
     def close(self):
-        self.fileobj.close()
+        raise NotImplementedError()
+
+
+class SimpleFileobjWARCReader(SimpleWARCReader):
+    def _read_line(self):
+        return self.datasource.readline()
+
+    def close(self):
+        self.datasource.close()
+
+
+class SimpleIteratorWARCReader(SimpleWARCReader):
+    def _read_line(self):
+        try:
+            return self.datasource.next()
+        except StopIteration:
+            return ''
+
+    def close(self):
+        pass
