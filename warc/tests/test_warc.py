@@ -1,5 +1,5 @@
 from ..warc import WARCReader, WARCHeader, WARCRecord, WARCFile, \
-    SimpleWARCReader
+    SimpleFileobjWARCReader, SimpleIteratorWARCReader
 
 from StringIO import StringIO
 
@@ -98,28 +98,55 @@ class TestWARCReader:
             assert rec is not None
 
 
-class TestSimpleWARCReader:
+class TestSimpleFileobjWARCReader:
     def test_read_header1(self):
         f = StringIO(SAMPLE_WARC_RECORD_TEXT)
-        h, b = SimpleWARCReader(f).read_record()
+        h, b = SimpleFileobjWARCReader(f).read_record()
         assert h['WARC-Date'] == "2012-02-10T16:15:52Z"
         assert h['WARC-Record-ID'] == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
         assert h['WARC-Type'] == "response"
         assert h['Content-Length'] == '10'
 
     def test_empty(self):
-        reader = WARCReader(StringIO(""))
+        reader = SimpleFileobjWARCReader(StringIO(""))
         assert reader.read_record() is None
 
     def test_read_record(self):
         f = StringIO(SAMPLE_WARC_RECORD_TEXT)
-        reader = SimpleWARCReader(f)
+        reader = SimpleFileobjWARCReader(f)
         headers, body = reader.read_record()
         assert body == "Helloworld"
 
     def read_multiple_records(self):
         f = StringIO(SAMPLE_WARC_RECORD_TEXT * 5)
-        reader = SimpleWARCReader(f)
+        reader = SimpleFileobjWARCReader(f)
+        for i in range(5):
+            rec = reader.read_record()
+            assert rec is not None
+
+
+class TestSimpleIteratorWARCReader:
+    def test_read_header1(self):
+        i = [r + "\n" for r in SAMPLE_WARC_RECORD_TEXT.split("\n")]
+        h, b = SimpleIteratorWARCReader(iter(i)).read_record()
+        assert h['WARC-Date'] == "2012-02-10T16:15:52Z"
+        assert h['WARC-Record-ID'] == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
+        assert h['WARC-Type'] == "response"
+        assert h['Content-Length'] == '10'
+
+    def test_empty(self):
+        reader = SimpleIteratorWARCReader(iter([]))
+        assert reader.read_record() is None
+
+    def test_read_record(self):
+        i = [r + "\n" for r in SAMPLE_WARC_RECORD_TEXT.split("\n")]
+        reader = SimpleIteratorWARCReader(iter(i))
+        headers, body = reader.read_record()
+        assert body == "Helloworld"
+
+    def read_multiple_records(self):
+        i = [r + "\n" for r in (SAMPLE_WARC_RECORD_TEXT * 5).split("\n")]
+        reader = SimpleIteratorWARCReader(iter(i))
         for i in range(5):
             rec = reader.read_record()
             assert rec is not None
@@ -151,6 +178,7 @@ class TestWarcFile:
         f = WARCFile(file)
         h = f.read_record().header
         assert h['WARC-Payload-Digest'] == "sha1:M4VJCCJQJKPACSSSBHURM572HSDQHO2P"
+
 
 if __name__ == '__main__':
     TestWARCReader().test_read_header()
