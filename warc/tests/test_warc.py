@@ -1,6 +1,8 @@
-from ..warc import WARCReader, WARCHeader, WARCRecord, WARCFile
+from ..warc import WARCReader, WARCHeader, WARCRecord, WARCFile, \
+    SimpleFileobjWARCReader, SimpleIteratorWARCReader
 
 from StringIO import StringIO
+
 
 class TestWARCHeader:
     def test_attrs(self):
@@ -52,18 +54,42 @@ class TestWARCHeader:
         assert f("warcinfo")["Content-Type"] == "application/warc-fields"
         assert f("newtype")["Content-Type"] == "application/octet-stream"
 
+
 SAMPLE_WARC_RECORD_TEXT = (
     "WARC/1.0\r\n" +
     "Content-Length: 10\r\n" +
     "WARC-Date: 2012-02-10T16:15:52Z\r\n" +
     "Content-Type: application/http; msgtype=response\r\n" +
+    "P3P: policyref=\"http://www.w3.org/2001/05/P3P/p3p.xml\"\r\n" +
+    "Page.Ly: v4.1\r\n" +
+    "BadHeader%: \r\n" +
+    "BadHeader: \n" +
     "WARC-Type: response\r\n" +
     "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n" +
     "WARC-Target-URI: http://example.com/\r\n" +
     "\r\n" +
     "Helloworld" +
-    "\r\n\r\n"
+    "\r\n" +
+    "\r\n"
 )
+SAMPLE_WARC_RECORD_LIST = [
+    "WARC/1.0\r\n",
+    "Content-Length: 10\r\n",
+    "WARC-Date: 2012-02-10T16:15:52Z\r\n",
+    "Content-Type: application/http; msgtype=response\r\n",
+    "P3P: policyref=\"http://www.w3.org/2001/05/P3P/p3p.xml\"\r\n",
+    "Page.Ly: v4.1\r\n",
+    "BadHeader%: \r\n",
+    "BadHeader: \n",
+    "WARC-Type: response\r\n",
+    "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n",
+    "WARC-Target-URI: http://example.com/\r\n",
+    "\r\n",
+    "Helloworld",
+    "\r\n",
+    "\r\n",
+]
+
 
 class TestWARCReader:
     def test_read_header1(self):
@@ -73,6 +99,8 @@ class TestWARCReader:
         assert h.record_id == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
         assert h.type == "response"
         assert h.content_length == 10
+        assert 'BadHeader' not in h
+        assert 'BadHeader%' not in h
 
     def test_empty(self):
         reader = WARCReader(StringIO(""))
@@ -90,6 +118,74 @@ class TestWARCReader:
         for i in range(5):
             rec = reader.read_record()
             assert rec is not None
+
+
+class TestSimpleFileobjWARCReader:
+    def test_read_header1(self):
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT)
+        h, b = SimpleFileobjWARCReader(f).read_record()
+        assert h['WARC-Date'] == "2012-02-10T16:15:52Z"
+        assert h['WARC-Record-ID'] == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
+        assert h['WARC-Type'] == "response"
+        assert h['Content-Length'] == '10'
+
+    def test_empty(self):
+        reader = SimpleFileobjWARCReader(StringIO(""))
+        assert reader.read_record() is None
+
+    def test_read_record(self):
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT)
+        reader = SimpleFileobjWARCReader(f)
+        headers, body = reader.read_record()
+        assert body == "Helloworld"
+
+    def read_multiple_records(self):
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT * 5)
+        reader = SimpleFileobjWARCReader(f)
+        for i in range(5):
+            rec = reader.read_record()
+            assert rec is not None
+
+    def test_bad_linebreaks(self):
+        f = StringIO(SAMPLE_WARC_RECORD_TEXT[:-2] * 5)
+        reader = SimpleFileobjWARCReader(f)
+        for i in range(5):
+            rec = reader.read_record()
+            assert rec is not None
+
+class TestSimpleIteratorWARCReader:
+    def test_read_header1(self):
+        i = iter(SAMPLE_WARC_RECORD_LIST)
+        h, b = SimpleIteratorWARCReader(i).read_record()
+        assert h['WARC-Date'] == "2012-02-10T16:15:52Z"
+        assert h['WARC-Record-ID'] == "<urn:uuid:80fb9262-5402-11e1-8206-545200690126>"
+        assert h['WARC-Type'] == "response"
+        assert h['Content-Length'] == '10'
+
+    def test_empty(self):
+        reader = SimpleIteratorWARCReader(iter([]))
+        assert reader.read_record() is None
+
+    def test_read_record(self):
+        i = iter(SAMPLE_WARC_RECORD_LIST)
+        reader = SimpleIteratorWARCReader(i)
+        headers, body = reader.read_record()
+        assert body == "Helloworld"
+
+    def read_multiple_records(self):
+        i = iter(SAMPLE_WARC_RECORD_LIST * 5)
+        reader = SimpleIteratorWARCReader(i)
+        for i in range(5):
+            rec = reader.read_record()
+            assert rec is not None
+
+    def test_bad_linebreaks(self):
+        f = (SAMPLE_WARC_RECORD_LIST[:-1] * 5)
+        reader = SimpleIteratorWARCReader(iter(f))
+        for i in range(5):
+            rec = reader.read_record()
+            assert rec is not None
+
 
 class TestWarcFile:
     def test_read(self):
@@ -117,6 +213,7 @@ class TestWarcFile:
         f = WARCFile(file)
         h = f.read_record().header
         assert h['WARC-Payload-Digest'] == "sha1:M4VJCCJQJKPACSSSBHURM572HSDQHO2P"
+
 
 if __name__ == '__main__':
     TestWARCReader().test_read_header()
