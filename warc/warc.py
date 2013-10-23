@@ -453,7 +453,10 @@ class SimpleWARCReader(WARCReader):
         while not (line == self.VERSION and body.endswith('\r\n\r\n')):
             body += line
             line = self._next_line()
-            if line == '':
+            if line == self.VERSION:
+                self.stack.append(self.VERSION)
+                break
+            elif line == '':    # StringIO EOF
                 break
         return body.strip('\r\n')
 
