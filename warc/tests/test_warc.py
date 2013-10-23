@@ -54,6 +54,7 @@ class TestWARCHeader:
         assert f("warcinfo")["Content-Type"] == "application/warc-fields"
         assert f("newtype")["Content-Type"] == "application/octet-stream"
 
+
 SAMPLE_WARC_RECORD_TEXT = (
     "WARC/1.0\r\n" +
     "Content-Length: 10\r\n" +
@@ -62,14 +63,32 @@ SAMPLE_WARC_RECORD_TEXT = (
     "P3P: policyref=\"http://www.w3.org/2001/05/P3P/p3p.xml\"\r\n" +
     "Page.Ly: v4.1\r\n" +
     "BadHeader%: \r\n" +
+    "BadHeader: \n" +
     "WARC-Type: response\r\n" +
     "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n" +
     "WARC-Target-URI: http://example.com/\r\n" +
     "\r\n" +
     "Helloworld" +
-    "\r\n\r\n"
+    "\r\n" +
+    "\r\n"
 )
-SAMPLE_WARC_RECORD_LIST = [r + "\r\n" for r in SAMPLE_WARC_RECORD_TEXT.split("\r\n")]
+SAMPLE_WARC_RECORD_LIST = [
+    "WARC/1.0\r\n",
+    "Content-Length: 10\r\n",
+    "WARC-Date: 2012-02-10T16:15:52Z\r\n",
+    "Content-Type: application/http; msgtype=response\r\n",
+    "P3P: policyref=\"http://www.w3.org/2001/05/P3P/p3p.xml\"\r\n",
+    "Page.Ly: v4.1\r\n",
+    "BadHeader%: \r\n",
+    "BadHeader: \n",
+    "WARC-Type: response\r\n",
+    "WARC-Record-ID: <urn:uuid:80fb9262-5402-11e1-8206-545200690126>\r\n",
+    "WARC-Target-URI: http://example.com/\r\n",
+    "\r\n",
+    "Helloworld",
+    "\r\n",
+    "\r\n",
+]
 
 
 class TestWARCReader:
@@ -81,6 +100,7 @@ class TestWARCReader:
         assert h.type == "response"
         assert h.content_length == 10
         assert 'BadHeader' not in h
+        assert 'BadHeader%' not in h
 
     def test_empty(self):
         reader = WARCReader(StringIO(""))
