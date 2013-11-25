@@ -346,6 +346,17 @@ class ARCFile(object):
         header = self.fileobj.readline()
         while header and header.strip() == "":
             header = self.fileobj.readline()
+            
+        #JG: this block stops the header parser / reader 
+        #from getting caught on the <arcmetadata> XML lump
+        #that can appear in ARC files
+        
+        if header.startswith("<arcmetadata"):
+            while not header.endswith("</arcmetadata>\n"):
+                header = self.fileobj.readline()
+            header = self.fileobj.readline()
+            header = self.fileobj.readline()
+            
 
         if header == "":
             return None
