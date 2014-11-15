@@ -1,6 +1,6 @@
 from ..warc import WARCReader, WARCHeader, WARCRecord, WARCFile
 
-from StringIO import StringIO
+from io import StringIO
 
 class TestWARCHeader:
     def test_attrs(self):

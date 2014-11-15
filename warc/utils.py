@@ -7,9 +7,10 @@ This file is part of warc
 :copyright: (c) 2012 Internet Archive
 """
 
-from UserDict import DictMixin
+from collections import MutableMapping
 
-class CaseInsensitiveDict(DictMixin):
+
+class CaseInsensitiveDict(MutableMapping):
     """Almost like a dictionary, but keys are case-insensitive.
     
         >>> d = CaseInsensitiveDict(foo=1, Bar=2)
@@ -23,9 +24,9 @@ class CaseInsensitiveDict(DictMixin):
         >>> d.keys()
         ["foo", "bar"]
     """
-    def __init__(self, mapping=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         self._d = {}
-        self.update(mapping, **kwargs)
+        self.update(dict(*args, **kwargs))
         
     def __setitem__(self, name, value):
         self._d[name.lower()] = value
@@ -39,8 +40,11 @@ class CaseInsensitiveDict(DictMixin):
     def __eq__(self, other):
         return isinstance(other, CaseInsensitiveDict) and other._d == self._d
         
-    def keys(self):
-        return self._d.keys()
+    def __iter__(self):
+        return iter(self._d)
+        
+    def __len__(self):
+        return len(self._d)
 
 class FilePart:
     """File interface over a part of file.
@@ -67,7 +71,7 @@ class FilePart:
         else:
             size = min(size, self.length - self.offset - len(self.buf))
             content = self.buf + self.fileobj.read(size)
-            self.buf = ""
+            self.buf = b""
         self.offset += len(content)
         return content
         

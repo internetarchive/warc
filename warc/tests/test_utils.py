@@ -1,5 +1,5 @@
 from ..utils import FilePart, CaseInsensitiveDict
-from cStringIO import StringIO
+from io import StringIO
 
 class TestCaseInsensitiveDict:
     def test_all(self):

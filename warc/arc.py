@@ -4,11 +4,11 @@ Provides support for ARC v1 files.
 :copyright: (c) 2012 Internet Archive
 """
 
-import __builtin__
+import builtins
 import datetime
 import os
 import re
-import StringIO
+import io
 import warnings
 
 from .utils import CaseInsensitiveDict
@@ -135,7 +135,7 @@ class ARCHeader(CaseInsensitiveDict):
         return int(self["length"])
 
     def __str__(self):
-        f = StringIO.StringIO()
+        f = io.StringIO()
         self.write_to(f)
         return f.getvalue()
         
@@ -144,7 +144,7 @@ class ARCHeader(CaseInsensitiveDict):
         for i in "url ip_address date content_typeresult_code checksum location offset filename length".split():
             if hasattr(self,i):
                 f[i] = getattr(self, i)
-        s = ['%s = "%s"'%(k, v) for k,v in f.iteritems()]
+        s = ['%s = "%s"'%(k, v) for k,v in f.items()]
         s = ", ".join(s)
         return "<ARCHeader(%s)>"%s
 
@@ -200,7 +200,7 @@ class ARCRecord(object):
 
     
     def __str__(self):
-        f = StringIO.StringIO()
+        f = io.StringIO()
         self.write_to(f)
         return f.getvalue()
         
@@ -250,7 +250,7 @@ class ARCFile(object):
         
         """
         if fileobj is None:
-            fileobj = __builtin__.open(filename, mode or "rb")
+            fileobj = builtins.open(filename, mode or "rb")
             mode = fileobj.mode
     # initialize compress based on filename, if not already specified
         if compress is None and filename and filename.endswith(".gz"):

@@ -49,7 +49,7 @@ class GzipFile(BaseGzipFile):
         self.fileobj.write(self.compress.flush())
         write32u(self.fileobj, self.crc)
         # self.size may exceed 2GB, or even 4GB
-        write32u(self.fileobj, self.size & 0xffffffffL)
+        write32u(self.fileobj, self.size & 0xffffffff)
         self.size = 0
         self.compress = zlib.compressobj(9,
                                          zlib.DEFLATED,
@@ -113,7 +113,7 @@ class GzipFile(BaseGzipFile):
         
         The data can be a string, an iterator that gives strings or a file-like object.
         """
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             self.write(data)
         else:
             for text in data:
