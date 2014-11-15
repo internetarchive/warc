@@ -251,6 +251,14 @@ class ARCFile(object):
         """
         if fileobj is None:
             fileobj = __builtin__.open(filename, mode or "rb")
+            mode = fileobj.mode
+    # initialize compress based on filename, if not already specified
+        if compress is None and filename and filename.endswith(".gz"):
+            compress = True
+
+        if compress:
+            fileobj = gzip2.GzipFile(fileobj=fileobj, mode=mode)
+        
         self.fileobj = fileobj
 
         self.filename = filename
@@ -266,6 +274,7 @@ class ARCFile(object):
         self.file_headers = file_headers
         self.header_written = False
         self.header_read = False
+        self.file_meta = ''
 
         
     def _write_header(self):
@@ -319,7 +328,6 @@ class ARCFile(object):
         payload1 = self.fileobj.readline()
         payload2 = self.fileobj.readline()
         version, reserved, organisation = payload1.split(None, 2)
-        self.fileobj.readline() # Lose the separator newline
         self.header_read = True
         # print "--------------------------------------------------"
         # print header,"\n", payload1, "\n", payload2,"\n"
@@ -342,6 +350,15 @@ class ARCFile(object):
         else:
             raise IOError("Unknown ARC version '%s'"%version)
 
+        current = len(payload1) + len(payload2)
+        self.file_meta = ''
+        while current < int(length):
+            line = self.fileobj.readline()
+            current = current + len(line)
+            self.file_meta = self.file_meta + line
+        self.fileobj.readline() # Lose the separator newline
+
+
     def _read_arc_record(self):
         "Reads out an arc record, formats it and returns it"
         #XXX:Noufal Stream payload here rather than just read it
@@ -353,6 +370,15 @@ class ARCFile(object):
         # Strip the initial new lines and read first line
         header = self.fileobj.readline()
         while header and header.strip() == "":
+            header = self.fileobj.readline()
+
+        #JG: this block stops the header parser / reader
+        #from getting caught on the <arcmetadata> XML lump
+        #that can appear in ARC files
+        if header.startswith("<arcmetadata"):
+            while not header.endswith("</arcmetadata>\n"):
+                header = self.fileobj.readline()
+            header = self.fileobj.readline()
             header = self.fileobj.readline()
 
         if header == "":
