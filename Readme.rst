@@ -1,5 +1,7 @@
-warc: Python library to work with WARC files
-============================================
+warc3: Python3 library to work with WARC files
+=============================================
+
+(Note: This is a fork of the original (now dead) warc repository. This project is still in transition and probobly not stable.)
 
 .. image:: https://secure.travis-ci.org/anandology/warc.png?branch=master
    :alt: build status
@@ -12,9 +14,9 @@ http://bibnum.bnf.fr/WARC/
 This `warc` library makes it very easy to work with WARC files.::
 
     import warc
-    f = warc.open("test.warc")
-    for record in f:
-        print record['WARC-Target-URI'], record['Content-Length']
+    with warc.open("test.warc") as f:
+        for record in f:
+            print record['WARC-Target-URI'], record['Content-Length']
 
 Documentation
 -------------
