@@ -7,6 +7,7 @@ Python library to work with WARC files.
 :copyright: (c) 2012 Internet Archive
 """
 
+import gzip
 import builtins
 import datetime
 import uuid
@@ -15,7 +16,6 @@ import re
 from io import StringIO
 import hashlib
 
-from . import gzip2
 from .utils import CaseInsensitiveDict, FilePart
 
 class WARCHeader(CaseInsensitiveDict):
@@ -111,7 +111,7 @@ class WARCHeader(CaseInsensitiveDict):
     @property
     def type(self): 
         """The value of WARC-Type header."""
-        return self.['WARC-Type']
+        return self['WARC-Type']
         
     @property
     def record_id(self):
@@ -251,11 +251,20 @@ class WARCFile:
             compress = True
         
         if compress:
-            fileobj = gzip2.GzipFile(fileobj=fileobj, mode=mode)
+            fileobj = gzip.open(fileobj, mode)
         
         self.fileobj = fileobj
         self._reader = None
-        
+    
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+    
+    def __iter__(self):
+        return iter(self.reader)
+    
     @property
     def reader(self):
         if self._reader is None:
@@ -266,17 +275,11 @@ class WARCFile:
         """Adds a warc record to this WARC file.
         """
         warc_record.write_to(self.fileobj)
-        # Each warc record is written as separate member in the gzip file
-        # so that each record can be read independetly.
-        if isinstance(self.fileobj, gzip2.GzipFile):
-            self.fileobj.close_member()
         
     def read_record(self):
         """Reads a warc record from this WARC file."""
         return self.reader.read_record()
-        
-    def __iter__(self):
-        return iter(self.reader)
+    
         
     def close(self):
         self.fileobj.close()
@@ -304,13 +307,9 @@ class WARCFile:
             offset = next_offset
 
     def tell(self):
-        """Returns the file offset. If this is a compressed file, then the 
-        offset in the compressed file is returned.
+        """Returns the file offset.
         """
-        if isinstance(self.fileobj, gzip2.GzipFile):
-            return self.fileobj.fileobj.tell()
-        else:
-            return self.fileobj.tell()            
+        return self.fileobj.tell()            
     
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
@@ -362,13 +361,7 @@ class WARCReader:
 
     def read_record(self):
         self.finish_reading_current_record()
-
-        if isinstance(self.fileobj, gzip2.GzipFile):
-            fileobj = self.fileobj.read_member()
-            if fileobj is None:
-                return None
-        else:
-            fileobj = self.fileobj
+        fileobj = self.fileobj
             
         header = self.read_header(fileobj)
         if header is None:

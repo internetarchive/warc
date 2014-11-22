@@ -102,7 +102,7 @@ class GzipFile(BaseGzipFile):
             try:
                 # Read one byte to move to the next member
                 BaseGzipFile._read(self, 1)
-                assert self._new_member is False
+#                assert self._new_member is False
             except EOFError:
                 return None
         

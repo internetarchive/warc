@@ -10,6 +10,7 @@ import os
 import re
 import io
 import warnings
+import gzip
 
 from .utils import CaseInsensitiveDict
 
@@ -257,7 +258,7 @@ class ARCFile(object):
             compress = True
 
         if compress:
-            fileobj = gzip2.GzipFile(fileobj=fileobj, mode=mode)
+            fileobj = gzip.open(fileobj, mode)
         
         self.fileobj = fileobj
 
@@ -276,7 +277,12 @@ class ARCFile(object):
         self.header_read = False
         self.file_meta = ''
 
-        
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+    
     def _write_header(self):
         "Writes out an ARC header"
         if "org" not in self.file_headers:
