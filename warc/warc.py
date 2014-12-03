@@ -13,10 +13,11 @@ import datetime
 import uuid
 import logging
 import re
-from io import StringIO
+import io
 import hashlib
+import sys
 
-from .utils import CaseInsensitiveDict, FilePart
+from .utils import CaseInsensitiveDict, FilePart, HTTPObject
 
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
@@ -90,18 +91,18 @@ class WARCHeader(CaseInsensitiveDict):
     def write_to(self, f):
         """Writes this header to a file, in the format specified by WARC.
         """
-        f.write(self.version + "\r\n")
-        for name, value in list(self.items()):
+        f.write(self.version.encode() + b"\r\n")
+        for name, value in self.items():
             name = name.title()
             # Use standard forms for commonly used patterns
             name = name.replace("Warc-", "WARC-").replace("-Ip-", "-IP-").replace("-Id", "-ID").replace("-Uri", "-URI")
-            f.write(name)
-            f.write(": ")
-            f.write(value)
-            f.write("\r\n")
-        
+            f.write(str(name).encode())
+            f.write(b": ")
+            f.write(str(value).encode())
+            f.write(b"\r\n")
+            
         # Header ends with an extra CRLF
-        f.write("\r\n")
+        f.write(b"\r\n")
 
     @property
     def content_length(self):
@@ -124,9 +125,9 @@ class WARCHeader(CaseInsensitiveDict):
         return self['WARC-Date']
     
     def __str__(self):
-        f = StringIO()
+        f = io.BytesIO()
         self.write_to(f)
-        return f.getvalue()
+        return str(f.getvalue(), 'utf-8')
         
     def __repr__(self):
         return "<WARCHeader: type=%r, record_id=%r>" % (self.type, self.record_id)
@@ -142,26 +143,43 @@ class WARCRecord(object):
             headers.setdefault("WARC-Type", "response")
 
         self.header = header or WARCHeader(headers, defaults=True)
-        self.payload = payload
         
         if defaults is True and 'Content-Length' not in self.header:
             if payload:
-                self.header['Content-Length'] = str(len(payload))
+                self.header['Content-Length'] = len(payload)
             else:
                 self.header['Content-Length'] = "0"
                 
         if defaults is True and 'WARC-Payload-Digest' not in self.header:
             self.header['WARC-Payload-Digest'] = self._compute_digest(payload)
             
+        if isinstance(payload, str):
+            payload = payload.encode()
+        if isinstance(payload, bytes):
+            payload = io.BytesIO(payload)
+            
+        self.payload = payload
+        self.http = False
+            
     def _compute_digest(self, payload):
         return "sha1:" + hashlib.sha1(payload).hexdigest()
                 
     def write_to(self, f):
         self.header.write_to(f)
-        f.write(self.payload)
-        f.write("\r\n")
-        f.write("\r\n")
+        if self.http:
+            self.http._reset()
+        f.write(self.payload.read())
+        f.write(b"\r\n")
+        f.write(b"\r\n")
         f.flush()
+     
+    def get_HTTP(self):
+        wtype = self['warc-type']
+        if wtype in {"response", "request"}:
+            http = HTTPObject(self.payload)
+            self.http = http
+            return http
+        return False
         
     @property
     def type(self):
@@ -205,9 +223,9 @@ class WARCRecord(object):
         return name in self.header
         
     def __str__(self):
-        f = StringIO()
+        f = io.BytesIO()
         self.write_to(f)
-        return f.getvalue()
+        return str(f.getvalue())
     
     def __repr__(self):
         return "<WARCRecord: type=%r record_id=%s>" % (self.type, self['WARC-Record-ID'])
@@ -230,7 +248,7 @@ class WARCRecord(object):
         body = http_response.read()
 
         # Monkey-patch the response object so that it is possible to read from it later.
-        response.raw._fp = StringIO(body)
+        response.raw._fp = io.BytesIO(body)
 
         # Build the payload to create warc file.
         payload = status_line + "\r\n" + headers + "\r\n" + body
@@ -300,7 +318,7 @@ class WARCFile:
             # This will make sure memory consuption is under control and it 
             # is possible to look at the first MB of the payload, which is 
             # typically sufficient to read http headers in the payload.
-            record.payload = StringIO(record.payload.read(1024*1024))
+            record.payload = io.BytesIO(record.payload.read(1024*1024))
             self.reader.finish_reading_current_record()
             next_offset = self.tell()
             yield record, offset, next_offset-offset

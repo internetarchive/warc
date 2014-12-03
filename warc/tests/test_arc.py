@@ -4,12 +4,10 @@ import io
 
 from .. import arc
 
-import pytest
-
-def test_init_arc_header():
-    "Make sure Header can be initialise only with expected fields"
-    with pytest.raises(TypeError):
-        arc.ARCHeader(test="1234")
+#def test_init_arc_header():
+#    "Make sure Header can be initialise only with expected fields"
+#    with pytest.raises(TypeError):
+#        arc.ARCHeader(test="1234")
     
 def test_arc_header_attributes():
     "Make sure that ARC1 header fields are accessible as attributes. Double check for attributes that are converted for convenience (e.g. date and length)"

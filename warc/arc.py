@@ -207,7 +207,7 @@ class ARCRecord(object):
         
     
 class ARCFile(object):
-    def __init__(self, filename=None, mode=None, fileobj=None, version = None, file_headers = {}):
+    def __init__(self, filename=None, mode=None, fileobj=None, version = None, file_headers = {}, compress=False):
         """
         Initialises a file like object that can be used to read or
         write Arc files. Works for both version 1 or version 2.
