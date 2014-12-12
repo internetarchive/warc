@@ -159,7 +159,7 @@ class WARCRecord(object):
             payload = io.BytesIO(payload)
             
         self.payload = payload
-        self.http = False
+        self._http = None
             
     def _compute_digest(self, payload):
         return "sha1:" + hashlib.sha1(payload).hexdigest()
@@ -173,14 +173,16 @@ class WARCRecord(object):
         f.write(b"\r\n")
         f.flush()
      
-    def get_HTTP(self):
-        wtype = self['warc-type']
-        if wtype in {"response", "request"}:
-            http = HTTPObject(self.payload)
-            self.http = http
-            return http
-        return False
-        
+    @property
+    def http(self):
+        if self._http is None:
+#            print(self.header['content-type'])
+            if 'application/http' in self.header['content-type']:
+                self._http = HTTPObject(self.payload)
+            else:
+                self._http = False
+        return self._http
+                
     @property
     def type(self):
         """Record type"""

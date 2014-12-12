@@ -8,7 +8,8 @@ This file is part of warc
 """
 
 from collections import MutableMapping
-from http.client import parse_headers
+from http.client import HTTPMessage
+import email.parser
 
 class CaseInsensitiveDict(MutableMapping):
     """Almost like a dictionary, but keys are case-insensitive.
@@ -101,10 +102,10 @@ class HTTPObject(CaseInsensitiveDict):
     def __init__(self, request_file):
         #Parse version line
         id_str_raw = request_file.readline()
-        id_str = self.id_str_raw.decode("iso-8859-1")
+        id_str = id_str_raw.decode("iso-8859-1")
         if "HTTP" not in id_str:
             #This is not an HTTP object.
-            request_file._unread(self.id_str_raw)
+            request_file._unread(id_str_raw)
             raise ValueError("Object is not HTTP.")
             
         words = id_str.split()
@@ -119,7 +120,7 @@ class HTTPObject(CaseInsensitiveDict):
                 command, path, version = words
         
         self._id = {
-            "vline": id_str,
+            "vline": id_str_raw,
             "command": command,
             "path": path,
             "status": status,
@@ -127,10 +128,22 @@ class HTTPObject(CaseInsensitiveDict):
             "version": version,
         }
         
-        self._header = parse_headers(request_file)
+        self._header, self.hstring = self._parse_headers(request_file)
         super().__init__(self._header)
         self.payload = request_file
     
+    @staticmethod
+    def _parse_headers(fp):
+        """This is a modification of the python3 http.clint.parse_headers function."""
+        headers = []
+        while True:
+            line = fp.readline(65536)
+            headers.append(line)
+            if line in (b'\r\n', b'\n', b''):
+                break
+        hstring = b''.join(headers)
+        return email.parser.Parser(_class=HTTPMessage).parsestr(hstring.decode('iso-8859-1')), hstring
+        
     def __repr__(self):
         return(self.vline + str(self._header))
         
@@ -151,15 +164,19 @@ class HTTPObject(CaseInsensitiveDict):
                 raise
 
     def _reset(self):
-        self.payload._unread("\r\n".encode())
-        for i in self._header:
-            value = i + ": " + self._header[i] + "\r\n"
-            self.payload._unread(value.encode())
-        self.payload._unread(self.vline.encode())
-
+        self.payload._unread(self.hstring)
+        self.payload._unread(self._id['vline'])
+        
+    def write_to(self, f):
+        f.write(self._id['vline'])
+        f.write(self.hstring)
+        f.write(self.payload.read())
+        f.write(b"\r\n\r\n")
+        f.flush()
+        
     @property
     def vline(self):
-        return self._id["vline"]
+        return self._id["vline"].decode("iso-8859-1")
 
     @property
     def version(self):
@@ -188,8 +205,7 @@ class HTTPObject(CaseInsensitiveDict):
 
     @property
     def error(self):
-        value = self._id["error"]
-        return int(value) if value else value
+        return self._id["error"]
 
     #Inherited from email parser.
     @property
@@ -200,18 +216,25 @@ class HTTPObject(CaseInsensitiveDict):
     def charset(self):
         return self._header.get_content_charset()
 
-    #Havn't used it yet.
-    def get_payload(self, size=1024):
+    def write_payload_to(self, fp):
         encoding = self._header.get("Transfer-Encoding", "None")
         if encoding == "chunked":
             found = b''
-            length = int(str(self.payload.readline(), "iso-8859-1").rstrip("\r\n"), 16)
+            length = int(str(self.payload.readline(), "iso-8859-1").rstrip(), 16)
             while length > 0:
                 found += self.payload.read(length)
                 self.payload.readline()
-                length = int(str(self.payload.readline(), "iso-8859-1").rstrip("\r\n"), 16)
-
-            return found
-
-        length = int(self._header.get("Content-Length", -1))
-        return self.payload.read(length)
+                length = int(str(self.payload.readline(), "iso-8859-1").rstrip(), 16)
+        else:
+            length = int(self._header.get("Content-Length", -1))
+            found = self.payload.read(length)
+            
+        fp.write(found)
+        
+        
+        
+        
+        
+        
+        
+        
