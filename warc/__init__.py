@@ -15,9 +15,7 @@ def detect_format(filename):
     """Tries to figure out the type of the file. Return 'warc' for
     WARC files and 'arc' for ARC files"""
 
-    if ".arc" in filename:
-        return "arc"
-    if ".warc" in filename:
+    if filename.endswith(".warc") or filename.endswith(".warc.gz"):
         return "warc"
 
     return "unknown"

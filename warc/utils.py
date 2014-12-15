@@ -7,13 +7,17 @@ This file is part of warc
 :copyright: (c) 2012 Internet Archive
 """
 
-from collections import MutableMapping
+from collections import MutableMapping, Mapping
 from http.client import HTTPMessage
 import email.parser
+import sys
+import re
+
+SEP = re.compile("[;:=]")
 
 class CaseInsensitiveDict(MutableMapping):
     """Almost like a dictionary, but keys are case-insensitive.
-    
+
         >>> d = CaseInsensitiveDict(foo=1, Bar=2)
         >>> d['foo']
         1
@@ -28,36 +32,36 @@ class CaseInsensitiveDict(MutableMapping):
     def __init__(self, *args, **kwargs):
         self._d = {}
         self.update(dict(*args, **kwargs))
-        
+
     def __setitem__(self, name, value):
         self._d[name.lower()] = value
-    
+
     def __getitem__(self, name):
         return self._d[name.lower()]
-        
+
     def __delitem__(self, name):
         del self._d[name.lower()]
-        
+
     def __eq__(self, other):
         return isinstance(other, CaseInsensitiveDict) and other._d == self._d
-        
+
     def __iter__(self):
         return iter(self._d)
-        
+
     def __len__(self):
         return len(self._d)
 
 class FilePart:
     """File interface over a part of file.
-    
-    Takes a file and length to read from the file and returns a file-object 
+
+    Takes a file and length to read from the file and returns a file-object
     over that part of the file.
     """
     def __init__(self, fileobj, length):
         self.fileobj = fileobj
         self.length = length
         self.offset = 0
-        self.buf = b'' 
+        self.buf = b''
 
     def read(self, size=-1):
         if size == -1:
@@ -96,7 +100,7 @@ class FilePart:
         while line:
             yield line
             line = self.readline()
-            
+
 class HTTPObject(CaseInsensitiveDict):
     """Small object to help with parsing HTTP warc entries"""
     def __init__(self, request_file):
@@ -107,7 +111,7 @@ class HTTPObject(CaseInsensitiveDict):
             #This is not an HTTP object.
             request_file._unread(id_str_raw)
             raise ValueError("Object is not HTTP.")
-            
+
         words = id_str.split()
         command = path = status = error = version = None
         #If length is not 3 it is a bad version line.
@@ -118,7 +122,7 @@ class HTTPObject(CaseInsensitiveDict):
                 status = " ".join(words[2:])
             else:
                 command, path, version = words
-        
+
         self._id = {
             "vline": id_str_raw,
             "command": command,
@@ -127,11 +131,12 @@ class HTTPObject(CaseInsensitiveDict):
             "error": error,
             "version": version,
         }
-        
+
         self._header, self.hstring = self._parse_headers(request_file)
         super().__init__(self._header)
         self.payload = request_file
-    
+        self._content = None
+
     @staticmethod
     def _parse_headers(fp):
         """This is a modification of the python3 http.clint.parse_headers function."""
@@ -143,21 +148,19 @@ class HTTPObject(CaseInsensitiveDict):
                 break
         hstring = b''.join(headers)
         return email.parser.Parser(_class=HTTPMessage).parsestr(hstring.decode('iso-8859-1')), hstring
-        
+
     def __repr__(self):
         return(self.vline + str(self._header))
-        
+
     def __getitem__(self, name):
         try:
             return super().__getitem__(name)
         except KeyError:
             value = name.lower()
             if value == "content_type":
-                return self.content_type
-            elif value == "charset":
-                return self.charset
-            elif value == "host":
-                return self.host
+                return self.content.type
+            elif value in self.content:
+                return self.content[value]
             elif value in self._id:
                 return self._id[value]
             else:
@@ -166,14 +169,24 @@ class HTTPObject(CaseInsensitiveDict):
     def _reset(self):
         self.payload._unread(self.hstring)
         self.payload._unread(self._id['vline'])
-        
+
     def write_to(self, f):
         f.write(self._id['vline'])
         f.write(self.hstring)
         f.write(self.payload.read())
         f.write(b"\r\n\r\n")
         f.flush()
-        
+
+    @property
+    def content(self):
+        if self._content is None:
+            try:
+                string = self._d["content-type"]
+            except KeyError:
+                string = ''
+            self._content = ContentType(string)
+        return self._content
+
     @property
     def vline(self):
         return self._id["vline"].decode("iso-8859-1")
@@ -181,40 +194,6 @@ class HTTPObject(CaseInsensitiveDict):
     @property
     def version(self):
         return self._id["version"]
-
-    #Request
-    @property
-    def command(self):
-        return self._id["command"]
-
-    @property
-    def path(self):
-        return self._id["path"]
-
-    @property
-    def host(self):
-        try:
-            return self._d['host']
-        except:
-            return None
-
-    #Response
-    @property
-    def status(self):
-        return self._id["status"]
-
-    @property
-    def error(self):
-        return self._id["error"]
-
-    #Inherited from email parser.
-    @property
-    def content_type(self):
-        return self._header.get_content_type()
-
-    @property
-    def charset(self):
-        return self._header.get_content_charset()
 
     def write_payload_to(self, fp):
         encoding = self._header.get("Transfer-Encoding", "None")
@@ -228,13 +207,24 @@ class HTTPObject(CaseInsensitiveDict):
         else:
             length = int(self._header.get("Content-Length", -1))
             found = self.payload.read(length)
-            
+
         fp.write(found)
-        
-        
-        
-        
-        
-        
-        
-        
+
+class ContentType(CaseInsensitiveDict):
+    def __init__(self, string):
+        data = {}
+        self.type = ''
+        if string:
+            _list = [i.strip() for i in string.lower().split(";")]
+            self.type = _list[0]
+
+            data["type"] = _list[0]
+            for i in _list[1:]:
+                test = [n.strip() for n in re.split(SEP, i)]
+                data[test[0]] = test[1]
+
+        super().__init__(data)
+
+    def __repr__(self):
+        return self.type
+
