@@ -270,7 +270,7 @@ class WARCRecord(object):
         response.raw._fp = io.BytesIO(body)
 
         # Build the payload to create warc file.
-        payload = status_line + "\r\n" + headers + "\r\n" + body
+        payload = status_line + "\r\n" + headers + "\r\n" + str(body)
 
         headers = {
             "WARC-Type": "response",
