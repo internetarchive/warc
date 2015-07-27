@@ -288,7 +288,7 @@ class WARCFile:
             compress = True
 
         if compress:
-            fileobj = gzip.open(fileobj, mode)
+            fileobj = gzip.open(fileobj.name, mode)
 
         self.fileobj = fileobj
         self._reader = None
