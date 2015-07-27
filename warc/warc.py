@@ -163,7 +163,7 @@ class WARCRecord(object):
         self._content = None
 
     def _compute_digest(self, payload):
-        return "sha1:" + hashlib.sha1(payload).hexdigest()
+        return "sha1:" + hashlib.sha1(payload.encode()).hexdigest()
 
     def write_to(self, f):
         self.header.write_to(f)
