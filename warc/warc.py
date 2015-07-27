@@ -159,7 +159,6 @@ class WARCRecord(object):
             payload = io.BytesIO(payload)
 
         self.payload = payload
-        self._http = None
         self._content = None
 
     def _compute_digest(self, payload):
@@ -167,8 +166,6 @@ class WARCRecord(object):
 
     def write_to(self, f):
         self.header.write_to(f)
-        if self.http:
-            self.http._reset()
         f.write(self.payload.read())
         f.write(b"\r\n")
         f.write(b"\r\n")
@@ -183,15 +180,6 @@ class WARCRecord(object):
                 string = ''
             self._content = ContentType(string)
         return self._content
-
-    @property
-    def http(self):
-        if self._http is None:
-            if 'application/http' in self.header['content-type']:
-                self._http = HTTPObject(self.payload)
-            else:
-                self._http = False
-        return self._http
 
     @property
     def type(self):
