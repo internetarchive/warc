@@ -17,7 +17,7 @@ import io
 import hashlib
 import sys
 
-from .utils import CaseInsensitiveDict, FilePart, HTTPObject, ContentType
+from .utils import CaseInsensitiveDict, FilePart
 
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
@@ -150,19 +150,19 @@ class WARCRecord(object):
             else:
                 self.header['Content-Length'] = "0"
 
+        if defaults is True and 'WARC-Payload-Digest' not in self.header:
+            self.header['WARC-Payload-Digest'] = self._compute_digest(payload)
+
         if isinstance(payload, str):
             payload = payload.encode()
         if isinstance(payload, bytes):
             payload = io.BytesIO(payload)
 
-        if defaults is True and 'WARC-Payload-Digest' not in self.header:
-            self.header['WARC-Payload-Digest'] = self._compute_digest(payload)
-
         self.payload = payload
         self._content = None
 
     def _compute_digest(self, payload):
-        return "sha1:" + hashlib.sha1(payload).hexdigest()
+        return "sha1:" + hashlib.sha1(payload.encode()).hexdigest()
 
     def write_to(self, f):
         self.header.write_to(f)
@@ -170,16 +170,6 @@ class WARCRecord(object):
         f.write(b"\r\n")
         f.write(b"\r\n")
         f.flush()
-
-    @property
-    def content(self):
-        if self._content is None:
-            try:
-                string = self.header["content-type"]
-            except KeyError:
-                string = ''
-            self._content = ContentType(string)
-        return self._content
 
     @property
     def type(self):
@@ -258,7 +248,7 @@ class WARCRecord(object):
         response.raw._fp = io.BytesIO(body)
 
         # Build the payload to create warc file.
-        payload = status_line + "\r\n" + headers + "\r\n" + str(body)
+        payload = status_line + b'\r\n' + headers + b'\r\n' + body
 
         headers = {
             "WARC-Type": "response",
