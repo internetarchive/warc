@@ -238,21 +238,38 @@ class WARCRecord(object):
         """
         # Get the httplib.HTTPResponse object
         http_response = response.raw._original_response
-
-        # HTTP status line, headers and body as strings
+        
+        # HTTP status line, headers as string
         status_line = "HTTP/1.1 %d %s" % (http_response.status, http_response.reason)
         headers = str(http_response.msg)
-        body = http_response.read()
 
-        # Monkey-patch the response object so that it is possible to read from it later.
-        response.raw._fp = io.BytesIO(body)
+        # Detect character set in headers
+        charset_match = re.search('charset=(.*)', headers, re.IGNORECASE)
+        if charset_match:
+            charset = charset_match.group(1)
+        else:
+            charset = 'utf8'
 
-        # Build the payload to create warc file.
-        payload = status_line + b'\r\n' + headers + b'\r\n' + body
+        # Read raw response data out of request
+        stream = io.BytesIO()
+        for chunk in response.iter_content(1024):
+            stream.write(chunk)
 
+        # We need to decode the content properly, we try first to
+        # respect the given encoding, failing that we fallback to
+        # utf-8, failing that we simply give up.
+        body_raw = stream.getvalue()
+        try:
+            body = body_raw.decode(charset)
+        except:
+            body = body_raw.decode('utf8')
+
+        # Concat into one response
+        payload = status_line + '\r\n' + headers + '\r\n' + body
+        
         headers = {
             "WARC-Type": "response",
-            "WARC-Target-URI": response.request.url.encode('utf-8')
+            "WARC-Target-URI": response.request.url
         }
         return WARCRecord(payload=payload, headers=headers)
 
