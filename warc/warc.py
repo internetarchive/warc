@@ -137,6 +137,8 @@ class WARCRecord(object):
     """
     def __init__(self, header=None, payload=None,  headers={}, defaults=True):
         """Creates a new WARC record.
+
+           @param payload must be of type 'bytes' or FilePart
         """
 
         if header is None and defaults is True:
@@ -149,20 +151,18 @@ class WARCRecord(object):
                 self.header['Content-Length'] = len(payload)
             else:
                 self.header['Content-Length'] = "0"
-
+                
         if defaults is True and 'WARC-Payload-Digest' not in self.header:
             self.header['WARC-Payload-Digest'] = self._compute_digest(payload)
 
-        if isinstance(payload, str):
-            payload = payload.encode()
         if isinstance(payload, bytes):
             payload = io.BytesIO(payload)
-
+            
         self.payload = payload
         self._content = None
 
     def _compute_digest(self, payload):
-        return "sha1:" + hashlib.sha1(payload.encode()).hexdigest()
+        return "sha1:" + hashlib.sha1(payload).hexdigest()
 
     def write_to(self, f):
         self.header.write_to(f)
@@ -243,29 +243,16 @@ class WARCRecord(object):
         status_line = "HTTP/1.1 %d %s" % (http_response.status, http_response.reason)
         headers = str(http_response.msg)
 
-        # Detect character set in headers
-        charset_match = re.search('charset=(.*)', headers, re.IGNORECASE)
-        if charset_match:
-            charset = charset_match.group(1)
-        else:
-            charset = 'utf8'
-
         # Read raw response data out of request
         stream = io.BytesIO()
+        stream.write(status_line.encode())
+        stream.write(b'\r\n')
+        stream.write(http_response.msg.as_bytes())
+        stream.write(b'\r\n')
         for chunk in response.iter_content(1024):
             stream.write(chunk)
 
-        # We need to decode the content properly, we try first to
-        # respect the given encoding, failing that we fallback to
-        # utf-8, failing that we simply give up.
-        body_raw = stream.getvalue()
-        try:
-            body = body_raw.decode(charset)
-        except:
-            body = body_raw.decode('utf8')
-
-        # Concat into one response
-        payload = status_line + '\r\n' + headers + '\r\n' + body
+        payload = stream.getvalue()
         
         headers = {
             "WARC-Type": "response",
