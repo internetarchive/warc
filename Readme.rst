@@ -33,10 +33,12 @@ Authors
 -------
 
 Original Python2 Versions:
-  Anand Chitipothu
-  Noufal Ibrahim
+
+* Anand Chitipothu
+* Noufal Ibrahim
 
 Python3 Port:
-  Ryan Chartier 
-  Jan Pieter Bruins Slot
-  Almer S. Tigelaar
+
+* Ryan Chartier 
+* Jan Pieter Bruins Slot
+* Almer S. Tigelaar
