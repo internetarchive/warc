@@ -151,13 +151,13 @@ class WARCRecord(object):
                 self.header['Content-Length'] = len(payload)
             else:
                 self.header['Content-Length'] = "0"
-                
+
         if defaults is True and 'WARC-Payload-Digest' not in self.header:
             self.header['WARC-Payload-Digest'] = self._compute_digest(payload)
 
         if isinstance(payload, bytes):
             payload = io.BytesIO(payload)
-            
+
         self.payload = payload
         self._content = None
 
@@ -238,7 +238,7 @@ class WARCRecord(object):
         """
         # Get the httplib.HTTPResponse object
         http_response = response.raw._original_response
-        
+
         # HTTP status line, headers as string
         status_line = "HTTP/1.1 %d %s" % (http_response.status, http_response.reason)
         headers = str(http_response.msg)
@@ -253,7 +253,7 @@ class WARCRecord(object):
             stream.write(chunk)
 
         payload = stream.getvalue()
-        
+
         headers = {
             "WARC-Type": "response",
             "WARC-Target-URI": response.request.url
@@ -375,7 +375,8 @@ class WARCReader:
             # consume all data from the current_payload before moving to next record
             self.current_payload.read()
             self.expect(self.current_payload.fileobj, "\r\n")
-            self.expect(self.current_payload.fileobj, "\r\n")
+            if self.current_payload.length:
+                self.expect(self.current_payload.fileobj, "\r\n")
             self.current_payload = None
 
     def read_record(self):
@@ -392,6 +393,10 @@ class WARCReader:
 
     def _read_payload(self, fileobj, content_length):
         size = 0
+        if content_length <= 0:
+            yield b''
+            raise StopIteration
+
         while size < content_length:
             chunk_size = min(1024, content_length-size)
             chunk = fileobj.read(chunk_size)
