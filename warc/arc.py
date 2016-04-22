@@ -155,7 +155,7 @@ class ARCHeader(CaseInsensitiveDict):
 
 
 def status_code(protocol):
-    http, code, text = protocol.split(' ', 2)
+    code = protocol.split(' ')[1]
     return int(code)
 
 
