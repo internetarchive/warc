@@ -154,6 +154,11 @@ class ARCHeader(CaseInsensitiveDict):
         return "<ARCHeader(%s)>"%s
 
 
+def status_code(protocol):
+    http, code, text = protocol.split(' ', 2)
+    return int(code)
+
+
 class ARCRecord(object):
     def __init__(self, header=None, payload=None, headers={}, version=None):
         if not (header or headers):
@@ -170,8 +175,10 @@ class ARCRecord(object):
             self.payload.seek(0)
             return
 
+        line = line.strip()
         headers = {
-            'protocol': line.strip(),
+            'protocol': line,
+            'status_code': status_code(line),
         }
         for line in self.payload:
             line = line.decode('utf-8')
