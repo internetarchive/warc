@@ -14,8 +14,16 @@ import gzip
 
 from .utils import CaseInsensitiveDict
 
-ARC1_HEADER_RE = re.compile('(?P<url>\S*)\s(?P<ip_address>\S*)\s(?P<date>\S*)\s(?P<content_type>\S*)\s(?P<length>\S*)')
-ARC2_HEADER_RE = re.compile('(?P<url>\S*)\s(?P<ip_address>\S*)\s(?P<date>\S*)\s(?P<content_type>\S*)\s(?P<result_code>\S*)\s(?P<checksum>\S*)\s(?P<location>\S*)\s(?P<offset>\S*)\s(?P<filename>\S*)\s(?P<length>\S*)')
+
+ARC1_HEADER_RE = re.compile(('(?P<url>\S*)\s(?P<ip_address>\S*)\s(?P<date>\S*)'
+                             '\s(?P<content_type>\S*)\s(?P<length>\S*)'))
+
+ARC2_HEADER_RE = re.compile(('(?P<url>\S*)\s(?P<ip_address>\S*)\s(?P<date>\S*)'
+                             '\s(?P<content_type>\S*)\s(?P<result_code>\S*)'
+                             '\s(?P<checksum>\S*)\s(?P<location>\S*)'
+                             '\s(?P<offset>\S*)\s(?P<filename>\S*)'
+                             '\s(?P<length>\S*)'))
+
 
 class ARCHeader(CaseInsensitiveDict):
     """
@@ -42,8 +50,10 @@ class ARCHeader(CaseInsensitiveDict):
         * length (length of the n/w doc in bytes)
 
     """
-    def __init__(self, url = "",  ip_address = "",  date = "",  content_type = "",
-                 result_code = "",  checksum = "",  location = "",  offset = "",  filename = "",  length = "", version = 2):
+    def __init__(self, url="",  ip_address="",  date="",
+                 content_type="", result_code="",  checksum="",
+                 location="",  offset="",  filename="",  length=0,
+                 version=2):
 
         if isinstance(date, datetime.datetime):
             date = date.strftime("%Y%m%d%H%M%S")
@@ -51,23 +61,24 @@ class ARCHeader(CaseInsensitiveDict):
             try:
                 datetime.datetime.strptime(date, "%Y%m%d%H%M%S")
             except ValueError:
-                raise ValueError("Couldn't parse the date '%s' in file header"%date)
+                raise ValueError("Couldn't parse the date '%s' in file "
+                                 "header" % date)
 
         self.version = version
+        super().__init__({
+            'url': url,
+            'ip_address': ip_address,
+            'date': date,
+            'content_type': content_type,
+            'result_code': result_code,
+            'checksum': checksum,
+            'location': location,
+            'offset': offset,
+            'filename': filename,
+            'length': int(length),
+        })
 
-        CaseInsensitiveDict.__init__(self,
-                                     url = url,
-                                     ip_address = ip_address,
-                                     date = date,
-                                     content_type = content_type,
-                                     result_code = result_code,
-                                     checksum = checksum,
-                                     location = location,
-                                     offset = offset,
-                                     filename = filename,
-                                     length = length)
-
-    def write_to(self, f, version = None):
+    def write_to(self, f, version=None):
         """
         Writes out the arc header to the file like object `f`.
 
@@ -78,22 +89,15 @@ class ARCHeader(CaseInsensitiveDict):
         if not version:
             version = self.version
         if version == 1:
-            header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(length)s"
+            header = ("%(url)s %(ip_address)s %(date)s "
+                      "%(content_type)s %(length)s")
         elif version == 2:
-            header = "%(url)s %(ip_address)s %(date)s %(content_type)s %(result_code)s %(checksum)s %(location)s %(offset)s %(filename)s %(length)s"
+            header = ("%(url)s %(ip_address)s %(date)s %(content_type)s "
+                      "%(result_code)s %(checksum)s %(location)s %(offset)s "
+                      "%(filename)s %(length)s")
 
-        header =  header%dict(url          = self['url'],
-                              ip_address   = self['ip_address'],
-                              date         = self['date'],
-                              content_type = self['content_type'],
-                              result_code  = self['result_code'],
-                              checksum     = self['checksum'],
-                              location     = self['location'],
-                              offset       = self['offset'],
-                              filename     = self['filename'],
-                              length       = self['length'])
+        header = header % dict(self)
         f.write(header)
-
 
     @property
     def url(self):
@@ -116,7 +120,7 @@ class ARCHeader(CaseInsensitiveDict):
         return self["result_code"]
 
     @property
-    def checksum (self):
+    def checksum(self):
         return self["checksum"]
 
     @property
@@ -142,7 +146,7 @@ class ARCHeader(CaseInsensitiveDict):
 
     def __repr__(self):
         f = {}
-        for i in "url ip_address date content_typeresult_code checksum location offset filename length".split():
+        for i in "url ip_address date content_type result_code checksum location offset filename length".split():
             if hasattr(self,i):
                 f[i] = getattr(self, i)
         s = ['%s = "%s"'%(k, v) for k,v in f.items()]
@@ -151,12 +155,34 @@ class ARCHeader(CaseInsensitiveDict):
 
 
 class ARCRecord(object):
-    def __init__(self, header = None, payload = None, headers = {}, version = None):
+    def __init__(self, header=None, payload=None, headers={}, version=None):
         if not (header or headers):
-            raise TypeError("Can't write create an ARC1 record without a header")
-        self.header = header or ARCHeader(version = version, **headers)
-        self.payload = payload
+            raise TypeError("Can't write create an ARC1 record "
+                            "without a header")
+        self.header = header or ARCHeader(version=version, **headers)
+        self.payload = io.BytesIO(payload)
         self.version = version
+        self._read_html_headers()
+
+    def _read_html_headers(self):
+        line = self.payload.readline().decode('utf-8')
+        if not line.startswith("HTTP/1"):
+            self.payload.seek(0)
+            return
+
+        headers = {
+            'protocol': line.strip(),
+        }
+        for line in self.payload:
+            line = line.decode('utf-8')
+            if not line.strip():
+                break
+            name, content = line.split(':', 1)
+            name = name.strip()
+            content = content.strip()
+            headers[name.lower()] = content
+        self.header['http_headers'] = headers
+        self.payload = io.BytesIO(self.payload.read())
 
     @classmethod
     def from_string(cls, string, version):
@@ -207,7 +233,7 @@ class ARCRecord(object):
 
 
 class ARCFile(object):
-    def __init__(self, filename=None, mode=None, fileobj=None, version = None, file_headers = {}, compress=False):
+    def __init__(self, filename=None, mode=None, fileobj=None, version = None, file_headers = {}, compress=None):
         """
         Initialises a file like object that can be used to read or
         write Arc files. Works for both version 1 or version 2.
@@ -253,7 +279,7 @@ class ARCFile(object):
         if fileobj is None:
             fileobj = builtins.open(filename, mode or "rb")
             mode = fileobj.mode
-    # initialize compress based on filename, if not already specified
+        # initialize compress based on filename, if not already specified
         if compress is None and filename and filename.endswith(".gz"):
             compress = True
 
@@ -325,85 +351,106 @@ class ARCFile(object):
             self.header_written = True
             self._write_header()
         arc_record.write_to(self.fileobj, self.version)
-        self.fileobj.write("\n") # Record separator
+        self.fileobj.write("\n")  # Record separator
 
     def _read_file_header(self):
         """Reads out the file header for the arc file. If version was
         not provided, this will autopopulate it."""
-        header = self.fileobj.readline()
-        payload1 = self.fileobj.readline()
-        payload2 = self.fileobj.readline()
-        version, reserved, organisation = payload1.split(None, 2)
+        header = self.fileobj.readline().decode('utf-8')
+        payload1 = self.fileobj.readline().decode('utf-8')
+        payload2 = self.fileobj.readline().decode('utf-8')
+        version, reserved, organisation = payload1.split(maxsplit=2)
         self.header_read = True
-        # print "--------------------------------------------------"
-        # print header,"\n", payload1, "\n", payload2,"\n"
-        # print "--------------------------------------------------"
+        version = int(version)
+        # print("--------------------------------------------------")
+        # print(header, "\n", payload1, "\n", payload2, "\n", version)
+        # print("--------------------------------------------------")
         if self.version and int(self.version) != version:
-            raise IOError("Version mismatch. Requested version was '%s' but version in file was '%s'"%(self.version, version))
+            raise IOError("Version mismatch. Requested version was '%s' but "
+                          "version in file was '%s'" % (self.version, version))
 
-        if version == '1':
+        if version == 1:
             url, ip_address, date, content_type, length = header.split()
-            self.file_headers = {"ip_address" : ip_address,
-                                 "date" : datetime.datetime.strptime(date, "%Y%m%d%H%M%S"),
-                                 "org" : organisation}
+            self.file_headers = {
+                "ip_address": ip_address,
+                "date": datetime.datetime.strptime(date, "%Y%m%d%H%M%S"),
+                "org": organisation,
+                "url": url,
+                'content_type': content_type,
+                'length': int(length),
+            }
             self.version = 1
-        elif version == '2':
+        elif version == 2:
             url, ip_address, date, content_type, result_code, checksum, location, offset, filename, length  = header.split()
-            self.file_headers = {"ip_address" : ip_address,
-                                 "date" : datetime.datetime.strptime(date, "%Y%m%d%H%M%S"),
-                                 "org" : organisation}
+            self.file_headers = {
+                "ip_address": ip_address,
+                "date": datetime.datetime.strptime(date, "%Y%m%d%H%M%S"),
+                "org": organisation,
+                'url': url,
+                'content_type': content_type,
+                'length': int(length),
+                'filename': filename,
+                'location': location,
+            }
             self.version = 2
         else:
-            raise IOError("Unknown ARC version '%s'"%version)
+            raise IOError("Unknown ARC version '%s'" % version)
 
-        current = len(payload1) + len(payload2)
-        self.file_meta = ''
-        while current < int(length):
+        length = int(length)
+        current_size = len(payload1 + payload2)
+        self.file_meta = b''
+        while current_size < length:
             line = self.fileobj.readline()
-            current = current + len(line)
             self.file_meta = self.file_meta + line
-        self.fileobj.readline() # Lose the separator newline
+            current_size = current_size + len(line)
+        self.fileobj.readline()  # Lose the separator newline
 
+    def _strip_initial_new_lines(self):
+        line = self.fileobj.readline()
+        while line and not line.strip():
+            line = self.fileobj.readline()
+        return line.decode('utf-8').strip()
+
+    def _safe_from_arcmetadata(self, line):
+        # JG: this block stops the header parser / reader
+        # from getting caught on the <arcmetadata> XML lump
+        # that can appear in ARC files
+        if line.startswith("<arcmetadata"):
+            while not line.endswith("</arcmetadata>\n"):
+                line = self.fileobj.readline().decode('utf-8')
+            line = self.fileobj.readline().decode('utf-8')
+            line = self.fileobj.readline().decode('utf-8')
+        return line.strip()
+
+    def _read_record_header(self, line):
+        if self.version == 1:
+            arc_header_re = ARC1_HEADER_RE
+        elif self.version == 2:
+            arc_header_re = ARC2_HEADER_RE
+
+        matches = arc_header_re.search(line)
+        headers = matches.groupdict()
+        return ARCHeader(**headers)
 
     def _read_arc_record(self):
         "Reads out an arc record, formats it and returns it"
-        #XXX:Noufal Stream payload here rather than just read it
+        # XXX:Noufal Stream payload here rather than just read it
         # r = self.fileobj.readline() # Drop the initial newline
         # if r == "":
         #     return None
         # header = self.fileobj.readline()
 
-        # Strip the initial new lines and read first line
-        header = self.fileobj.readline()
-        while header and header.strip() == "":
-            header = self.fileobj.readline()
+        line = self._strip_initial_new_lines()
+        line = self._safe_from_arcmetadata(line)
 
-        #JG: this block stops the header parser / reader
-        #from getting caught on the <arcmetadata> XML lump
-        #that can appear in ARC files
-        if header.startswith("<arcmetadata"):
-            while not header.endswith("</arcmetadata>\n"):
-                header = self.fileobj.readline()
-            header = self.fileobj.readline()
-            header = self.fileobj.readline()
-
-        if header == "":
+        if not line:
             return None
 
-        if int(self.version) == 1:
-            arc_header_re = ARC1_HEADER_RE
-        elif int(self.version) == 2:
-            arc_header_re = ARC2_HEADER_RE
+        header = self._read_record_header(line)
+        payload = self.fileobj.read(header['length'])
 
-        matches = arc_header_re.search(header)
-        headers = matches.groupdict()
-        arc_header = ARCHeader(**headers)
-
-        payload = self.fileobj.read(int(headers['length']))
-
-        self.fileobj.readline() # Munge the separator newline.
-
-        return ARCRecord(header = arc_header, payload = payload)
+        self.fileobj.readline()  # Munge the separator newline.
+        return ARCRecord(header=header, payload=payload)
 
     def read(self):
         "Reads out an arc record from the file"

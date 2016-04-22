@@ -15,6 +15,7 @@ import re
 
 SEP = re.compile("[;:=]")
 
+
 class CaseInsensitiveDict(MutableMapping):
     """Almost like a dictionary, but keys are case-insensitive.
 
@@ -50,6 +51,7 @@ class CaseInsensitiveDict(MutableMapping):
 
     def __len__(self):
         return len(self._d)
+
 
 class FilePart:
     """File interface over a part of file.
