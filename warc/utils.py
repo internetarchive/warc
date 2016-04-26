@@ -7,13 +7,37 @@ This file is part of warc
 :copyright: (c) 2012 Internet Archive
 """
 
-from collections import MutableMapping, Mapping
-from http.client import HTTPMessage
-import email.parser
-import sys
+from collections import MutableMapping
 import re
 
 SEP = re.compile("[;:=]")
+
+
+def status_code(protocol):
+    code = protocol.split(' ')[1]
+    return int(code)
+
+
+def get_http_headers(f):
+    line = f.readline().decode('utf-8')
+    if not line.startswith("HTTP/1"):
+        f.seek(0)
+        return
+
+    line = line.strip()
+    headers = {
+        'protocol': line,
+        'status_code': status_code(line),
+    }
+    for line in f:
+        line = line.decode('utf-8')
+        if not line.strip():
+            break
+        name, content = line.split(':', 1)
+        name = name.strip()
+        content = content.strip()
+        headers[name.lower()] = content
+    return headers
 
 
 class CaseInsensitiveDict(MutableMapping):

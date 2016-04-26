@@ -12,7 +12,7 @@ import io
 import warnings
 import gzip
 
-from .utils import CaseInsensitiveDict
+from .utils import CaseInsensitiveDict, status_code
 
 
 ARC1_HEADER_RE = re.compile(('(?P<url>\S*)\s(?P<ip_address>\S*)\s(?P<date>\S*)'
@@ -154,11 +154,6 @@ class ARCHeader(CaseInsensitiveDict):
         return "<ARCHeader(%s)>"%s
 
 
-def status_code(protocol):
-    code = protocol.split(' ')[1]
-    return int(code)
-
-
 class ARCRecord(object):
     def __init__(self, header=None, payload=None, headers={}, version=None):
         if not (header or headers):
@@ -199,8 +194,8 @@ class ARCRecord(object):
         TODO: It might be best to merge this with the _read_arc_record
         function rather than reimplement the functionality here.
         """
-        header, payload = string.split("\n",1)
-        if payload[0] == '\n': # There's an extra
+        header, payload = string.split("\n", 1)
+        if payload[0] == '\n':  # There's an extra
             payload = payload[1:]
         if int(version) == 1:
             arc_header_re = ARC1_HEADER_RE
