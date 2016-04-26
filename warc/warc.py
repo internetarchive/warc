@@ -11,13 +11,12 @@ import gzip
 import builtins
 import datetime
 import uuid
-import logging
 import re
 import io
 import hashlib
-import sys
 
-from .utils import CaseInsensitiveDict, FilePart
+from .utils import CaseInsensitiveDict, FilePart, get_http_headers
+
 
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
@@ -51,9 +50,9 @@ class WARCHeader(CaseInsensitiveDict):
 
     """
     CONTENT_TYPES = dict(warcinfo='application/warc-fields',
-                        response='application/http; msgtype=response',
-                        request='application/http; msgtype=request',
-                        metadata='application/warc-fields')
+                         response='application/http; msgtype=response',
+                         request='application/http; msgtype=request',
+                         metadata='application/warc-fields')
 
     KNOWN_HEADERS = {
         "type": "WARC-Type",
@@ -68,13 +67,14 @@ class WARCHeader(CaseInsensitiveDict):
     }
 
     def __init__(self, headers, defaults=False):
-        self.version = "WARC/1.0"
         super().__init__(headers)
         if defaults:
             self.init_defaults()
+        self.version = "WARC/%s" % self.get('warc-version', '1.0')
 
     def init_defaults(self):
-        """Initializes important headers to default values, if not already specified.
+        """Initializes important headers to default values,
+        if not already specified.
 
         The WARC-Record-ID header is set to a newly generated UUID.
         The WARC-Date header is set to the current datetime.
@@ -95,7 +95,10 @@ class WARCHeader(CaseInsensitiveDict):
         for name, value in self.items():
             name = name.title()
             # Use standard forms for commonly used patterns
-            name = name.replace("Warc-", "WARC-").replace("-Ip-", "-IP-").replace("-Id", "-ID").replace("-Uri", "-URI")
+            name = (name.replace("Warc-", "WARC-")
+                    .replace("-Ip-", "-IP-")
+                    .replace("-Id", "-ID")
+                    .replace("-Uri", "-URI"))
             f.write(str(name).encode())
             f.write(b": ")
             f.write(str(value).encode())
@@ -132,6 +135,7 @@ class WARCHeader(CaseInsensitiveDict):
     def __repr__(self):
         return "<WARCHeader: type=%r, record_id=%r>" % (self.type, self.record_id)
 
+
 class WARCRecord(object):
     """The WARCRecord object represents a WARC Record.
     """
@@ -160,6 +164,24 @@ class WARCRecord(object):
 
         self.payload = payload
         self._content = None
+
+        self._custom_cases()
+
+    def _custom_cases(self):
+        # TODO: this need to be done using other pattern, but first we need
+        # tests
+        if self.version == '0.18':
+            self._custom_0_18()
+
+    def _custom_0_18(self):
+        if not self.type == 'response':
+            return
+
+        if not self['content-type'].startswith('application/http'):
+            return
+
+        headers = get_http_headers(self.payload)
+        self.header['http_headers'] = headers
 
     def _compute_digest(self, payload):
         return "sha1:" + hashlib.sha1(payload).hexdigest()
@@ -198,6 +220,10 @@ class WARCRecord(object):
         return self.header.get('WARC-Payload-Digest')
 
     @property
+    def version(self):
+        return self.header['warc-version']
+
+    @property
     def offset(self):
         """Offset of this record in the warc file from which this record is read.
         """
@@ -212,7 +238,6 @@ class WARCRecord(object):
             elif name in self.content:
                 return self.content[name]
 
-
     def __setitem__(self, name, value):
         self.header[name] = value
 
@@ -225,7 +250,8 @@ class WARCRecord(object):
         return str(f.getvalue())
 
     def __repr__(self):
-        return "<WARCRecord: type=%r record_id=%s>" % (self.type, self['WARC-Record-ID'])
+        return "<WARCRecord: type=%r record_id=%s>" % (self.type,
+                                                       self['WARC-Record-ID'])
 
     @staticmethod
     def from_response(response):
@@ -240,7 +266,8 @@ class WARCRecord(object):
         http_response = response.raw._original_response
 
         # HTTP status line, headers as string
-        status_line = "HTTP/1.1 %d %s" % (http_response.status, http_response.reason)
+        status_line = "HTTP/1.1 %d %s" % (http_response.status,
+                                          http_response.reason)
         headers = str(http_response.msg)
 
         # Read raw response data out of request
@@ -259,6 +286,7 @@ class WARCRecord(object):
             "WARC-Target-URI": response.request.url
         }
         return WARCRecord(payload=payload, headers=headers)
+
 
 class WARCFile:
     def __init__(self, filename=None, mode=None, fileobj=None, compress=None):
@@ -299,7 +327,6 @@ class WARCFile:
         """Reads a warc record from this WARC file."""
         return self.reader.read_record()
 
-
     def close(self):
         self.fileobj.close()
 
@@ -330,10 +357,11 @@ class WARCFile:
         """
         return self.fileobj.tell()
 
+
 class WARCReader:
     RE_VERSION = re.compile("WARC/(\d+.\d+)\r\n")
     RE_HEADER = re.compile(r"([a-zA-Z_\-]+): *(.*)\r\n")
-    SUPPORTED_VERSIONS = ["1.0"]
+    SUPPORTED_VERSIONS = ["1.0", "0.18"]
 
     def __init__(self, fileobj):
         self.fileobj = fileobj
@@ -351,10 +379,12 @@ class WARCReader:
         if version not in self.SUPPORTED_VERSIONS:
             raise IOError("Unsupported WARC version: %s" % version)
 
-        headers = {}
+        headers = {
+            'warc-version': version,
+        }
         while True:
             line = fileobj.readline().decode("utf-8")
-            if line == "\r\n": # end of headers
+            if line == "\r\n":  # end of headers
                 break
             m = self.RE_HEADER.match(line)
             if not m:
@@ -372,7 +402,8 @@ class WARCReader:
     def finish_reading_current_record(self):
         # consume the footer from the previous record
         if self.current_payload:
-            # consume all data from the current_payload before moving to next record
+            # consume all data from the current_payload before
+            # moving to next record
             self.current_payload.read()
             self.expect(self.current_payload.fileobj, "\r\n")
             if self.current_payload.length:
