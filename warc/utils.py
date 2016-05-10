@@ -7,11 +7,42 @@ This file is part of warc
 :copyright: (c) 2012 Internet Archive
 """
 
-from UserDict import DictMixin
+from collections import MutableMapping
+import re
 
-class CaseInsensitiveDict(DictMixin):
+SEP = re.compile("[;:=]")
+
+
+def status_code(protocol):
+    code = protocol.split(' ')[1]
+    return int(code)
+
+
+def get_http_headers(f):
+    line = f.readline().decode('utf-8')
+    if not line.startswith("HTTP/1"):
+        f.seek(0)
+        return
+
+    line = line.strip()
+    headers = {
+        'protocol': line,
+        'status_code': status_code(line),
+    }
+    for line in f:
+        line = line.decode('utf-8')
+        if not line.strip():
+            break
+        name, content = line.split(':', 1)
+        name = name.strip()
+        content = content.strip()
+        headers[name.lower()] = content
+    return headers
+
+
+class CaseInsensitiveDict(MutableMapping):
     """Almost like a dictionary, but keys are case-insensitive.
-    
+
         >>> d = CaseInsensitiveDict(foo=1, Bar=2)
         >>> d['foo']
         1
@@ -23,71 +54,72 @@ class CaseInsensitiveDict(DictMixin):
         >>> d.keys()
         ["foo", "bar"]
     """
-    def __init__(self, mapping=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         self._d = {}
-        self.update(mapping, **kwargs)
-        
+        self.update(dict(*args, **kwargs))
+
     def __setitem__(self, name, value):
         self._d[name.lower()] = value
-    
+
     def __getitem__(self, name):
         return self._d[name.lower()]
-        
+
     def __delitem__(self, name):
         del self._d[name.lower()]
-        
+
     def __eq__(self, other):
         return isinstance(other, CaseInsensitiveDict) and other._d == self._d
-        
-    def keys(self):
-        return self._d.keys()
+
+    def __iter__(self):
+        return iter(self._d)
+
+    def __len__(self):
+        return len(self._d)
+
 
 class FilePart:
     """File interface over a part of file.
-    
-    Takes a file and length to read from the file and returns a file-object 
+
+    Takes a file and length to read from the file and returns a file-object
     over that part of the file.
     """
     def __init__(self, fileobj, length):
         self.fileobj = fileobj
         self.length = length
         self.offset = 0
-        self.buf = "" 
-        
+        self.buf = b''
+
     def read(self, size=-1):
         if size == -1:
-            return self._read(self.length)
-        else:
-            return self._read(size)
-        
-    def _read(self, size):
+            size = self.length
+
         if len(self.buf) >= size:
             content = self.buf[:size]
             self.buf = self.buf[size:]
         else:
-            size = min(size, self.length - self.offset - len(self.buf))
-            content = self.buf + self.fileobj.read(size)
-            self.buf = ""
+            size = min(size, self.length - self.offset)
+            content = self.buf + self.fileobj.read(size - len(self.buf))
+            self.buf = b''
         self.offset += len(content)
         return content
-        
+
     def _unread(self, content):
         self.buf = content + self.buf
         self.offset -= len(content)
-        
-    def readline(self):
+
+    def readline(self, size=1024):
         chunks = []
-        chunk = self._read(1024)
-        while chunk and "\n" not in chunk:
+        chunk = self.read(size)
+        while chunk and b"\n" not in chunk:
             chunks.append(chunk)
-            chunk = self._read(1024)
-            
-        if "\n" in chunk:
-            index = chunk.index("\n")
+            chunk = self.read(size)
+
+        if b"\n" in chunk:
+            index = chunk.index(b"\n")
             self._unread(chunk[index+1:])
             chunk = chunk[:index+1]
         chunks.append(chunk)
-        return "".join(chunks)
+        return b"".join(chunks)
 
     def __iter__(self):
         line = self.readline()

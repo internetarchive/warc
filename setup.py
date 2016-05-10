@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="warc",
-    version="0.2.0",
+    version="0.2.2",
     description="Python library to work with ARC and WARC files",
     long_description=open('Readme.rst').read(),
     license='GPLv2',
@@ -19,7 +19,7 @@ setup(
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
+        'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
     ],
