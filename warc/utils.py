@@ -94,3 +94,6 @@ class FilePart:
         while line:
             yield line
             line = self.readline()
+
+    def __len__(self):
+        return self.length
