@@ -158,7 +158,7 @@ class WARCRecord(object):
                 
     def write_to(self, f):
         self.header.write_to(f)
-        f.write(self.payload)
+        f.write(self.payload.buf)
         f.write("\r\n")
         f.write("\r\n")
         f.flush()
