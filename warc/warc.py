@@ -234,10 +234,15 @@ class WARCRecord(object):
 
         # Build the payload to create warc file.
         payload = status_line + "\r\n" + headers + "\r\n" + body
-        
+       
+        try:
+            warc_target_uri = response.request.full_url.encode('utf-8')
+        except AttributeError:
+            warc_target_uri = response.request.url.encode('utf-8')
+
         headers = {
             "WARC-Type": "response",
-            "WARC-Target-URI": response.request.full_url.encode('utf-8')
+            "WARC-Target-URI": warc_target_uri
         }
         return WARCRecord(payload=payload, headers=headers)
 
