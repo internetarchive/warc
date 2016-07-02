@@ -18,6 +18,7 @@ import hashlib
 from . import gzip2
 from .utils import CaseInsensitiveDict, FilePart
 
+
 class WARCHeader(CaseInsensitiveDict):
     """The WARC Header object represents the headers of a WARC record.
 
@@ -131,6 +132,7 @@ class WARCHeader(CaseInsensitiveDict):
     def __repr__(self):
         return "<WARCHeader: type=%r, record_id=%r>" % (self.type, self.record_id)
 
+
 class WARCRecord(object):
     """The WARCRecord object represents a WARC Record.
     """
@@ -213,31 +215,45 @@ class WARCRecord(object):
         return "<WARCRecord: type=%r record_id=%s>" % (self.type, self['WARC-Record-ID'])
         
     @staticmethod
+    # NOTE: stream must be set to true for all requests ie, requests.get(url, stream=True)
+    # failure to do this will result in empty response payloads
     def from_response(response):
         """Creates a WARCRecord from given response object.
 
         This must be called before reading the response. The response can be 
-        read after this method is called.
+        accessed by using response.body_recieved after the method is called
         
         :param response: An instance of :class:`requests.models.Response`.
         """
-        # Get the httplib.HTTPResponse object
-        http_response = response.raw._original_response
         
         # HTTP status line, headers and body as strings
-        status_line = "HTTP/1.1 %d %s" % (http_response.status, http_response.reason)
-        headers = str(http_response.msg)
-        body = http_response.read()
+        status_line = "HTTP/1.1 {} {}".format(response.status_code, response.reason)
+        headers = ''
+        for the_key in response.headers.keys():
+            headers += '{}: {}\n'.format(the_key, response.headers[the_key])
 
-        # Monkey-patch the response object so that it is possible to read from it later.
-        response.raw._fp = StringIO(body)
+
+        # Stream the body chunk by chunk to a string.
+        body = ''
+        for chunk in response.iter_content(10):
+            body += chunk
+
+        
+        # This can be thought of as the old response.text. We cannot set response.text
+        # because the creators of the requests module wont allow it
+        response.body_recieved = body
 
         # Build the payload to create warc file.
         payload = status_line + "\r\n" + headers + "\r\n" + body
-        
+       
+        try:
+            warc_target_uri = response.request.full_url.encode('utf-8')
+        except AttributeError:
+            warc_target_uri = response.request.url.encode('utf-8')
+
         headers = {
             "WARC-Type": "response",
-            "WARC-Target-URI": response.request.full_url.encode('utf-8')
+            "WARC-Target-URI": warc_target_uri
         }
         return WARCRecord(payload=payload, headers=headers)
 
@@ -247,7 +263,7 @@ class WARCFile:
             fileobj = __builtin__.open(filename, mode or "rb")
             mode = fileobj.mode
         # initiaize compress based on filename, if not already specified
-        if compress is None and filename and filename.endswith(".gz"):
+        if compress is None and filename and filename.endswith(".gz") or filename.endswith(".gz.open"):
             compress = True
         
         if compress:
