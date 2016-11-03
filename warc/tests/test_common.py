@@ -38,7 +38,3 @@ def test_sample_data():
     expected = """http://www.killerjo.net:80/robots.txt 211.111.217.29 20110804181142       39
 SSH-2.0-OpenSSH_5.3p1 Debian-3ubuntu3\r\n\n"""
     assert record == expected
-
-
-    
-

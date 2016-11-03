@@ -4,12 +4,17 @@ Provides support for ARC v1 files.
 :copyright: (c) 2012 Internet Archive
 """
 
-import __builtin__
 import datetime
 import os
 import re
-import StringIO
 import warnings
+
+try:
+    import __builtin__
+    from StringIO import StringIO
+except ImportError:
+    import builtins as __builtin__
+    from io import StringIO
 
 from .utils import CaseInsensitiveDict
 
@@ -135,7 +140,7 @@ class ARCHeader(CaseInsensitiveDict):
         return int(self["length"])
 
     def __str__(self):
-        f = StringIO.StringIO()
+        f = StringIO()
         self.write_to(f)
         return f.getvalue()
         
@@ -184,6 +189,8 @@ class ARCRecord(object):
         f.write("\n") # This separates the header and the body
         if isinstance(self.payload, str): #Usually used for small payloads
             f.write(self.payload)
+        elif isinstance(self.payload, bytes):
+            f.write(self.payload.decode('utf-8'))
         elif hasattr(self.payload, "read"): #Used for large payloads where we give a file like object
             chunk_size = 10 * 1024 * 1024 # Read 10MB by 10MB
             d = self.payload.read(chunk_size)
@@ -200,7 +207,7 @@ class ARCRecord(object):
 
     
     def __str__(self):
-        f = StringIO.StringIO()
+        f = StringIO()
         self.write_to(f)
         return f.getvalue()
         
@@ -318,15 +325,19 @@ class ARCFile(object):
         # print "--------------------------------------------------"
         if self.version and int(self.version) != version:
             raise IOError("Version mismatch. Requested version was '%s' but version in file was '%s'"%(self.version, version))
-        
-        if version == '1':
+
+        if int(version) == 1:
             url, ip_address, date, content_type, length = header.split()
+            if isinstance(date, bytes):
+                date = date.decode('utf-8')
             self.file_headers = {"ip_address" : ip_address,
                                  "date" : datetime.datetime.strptime(date, "%Y%m%d%H%M%S"),
                                  "org" : organisation}
             self.version = 1
-        elif version == '2':
+        elif int(version) == 2:
             url, ip_address, date, content_type, result_code, checksum, location, offset, filename, length  = header.split()
+            if isinstance(date, bytes):
+                date = date.decode('utf-8')
             self.file_headers = {"ip_address" : ip_address,
                                  "date" : datetime.datetime.strptime(date, "%Y%m%d%H%M%S"),
                                  "org" : organisation}
@@ -355,6 +366,8 @@ class ARCFile(object):
         elif int(self.version) == 2:
             arc_header_re = ARC2_HEADER_RE
 
+        if isinstance(header, bytes):
+            header = header.decode('utf-8')
         matches = arc_header_re.search(header)
         headers = matches.groupdict()
         arc_header = ARCHeader(**headers)
