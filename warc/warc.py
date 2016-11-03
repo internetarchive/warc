@@ -7,13 +7,18 @@ Python library to work with WARC files.
 :copyright: (c) 2012 Internet Archive
 """
 
-import __builtin__
 import datetime
 import uuid
 import logging
 import re
-from cStringIO import StringIO
 import hashlib
+
+try:
+    import __builtin__
+    from cStringIO import StringIO
+except ImportError:
+    import builtins as __builtin__
+    from io import StringIO
 
 from . import gzip2
 from .utils import CaseInsensitiveDict, FilePart
@@ -67,7 +72,7 @@ class WARCHeader(CaseInsensitiveDict):
     }
                             
     def __init__(self, headers, defaults=False):
-        self.version = "WARC/1.0"
+        self.version = b"WARC/1.0"
         CaseInsensitiveDict.__init__(self, headers)
         if defaults:
             self.init_defaults()
@@ -90,29 +95,29 @@ class WARCHeader(CaseInsensitiveDict):
     def write_to(self, f):
         """Writes this header to a file, in the format specified by WARC.
         """
-        f.write(self.version + "\r\n")
+        f.write(self.version + b"\r\n")
         for name, value in self.items():
             name = name.title()
             # Use standard forms for commonly used patterns
             name = name.replace("Warc-", "WARC-").replace("-Ip-", "-IP-").replace("-Id", "-ID").replace("-Uri", "-URI")
-            f.write(name)
-            f.write(": ")
-            f.write(value)
-            f.write("\r\n")
+            f.write(name.encode('utf-8'))
+            f.write(b": ")
+            f.write(value.encode('utf-8'))
+            f.write(b"\r\n")
         
         # Header ends with an extra CRLF
-        f.write("\r\n")
+        f.write(b"\r\n")
 
     @property
     def content_length(self):
         """The Content-Length header as int."""
         return int(self['Content-Length'])
-        
+
     @property
     def type(self): 
         """The value of WARC-Type header."""
         return self.get('WARC-Type')
-        
+
     @property
     def record_id(self):
         """The value of WARC-Record-ID header."""
@@ -124,9 +129,10 @@ class WARCHeader(CaseInsensitiveDict):
         return self['WARC-Date']
     
     def __str__(self):
-        f = StringIO()
+        from io import BytesIO
+        f = BytesIO()
         self.write_to(f)
-        return f.getvalue()
+        return f.getvalue().decode('utf-8')
         
     def __repr__(self):
         return "<WARCHeader: type=%r, record_id=%r>" % (self.type, self.record_id)
@@ -157,10 +163,14 @@ class WARCRecord(object):
         return "sha1:" + hashlib.sha1(payload).hexdigest()
                 
     def write_to(self, f):
+        if isinstance(self.payload, bytes):
+            line_break = b"\r\n"
+        else:
+            line_break = "\r\n"
         self.header.write_to(f)
         f.write(self.payload)
-        f.write("\r\n")
-        f.write("\r\n")
+        f.write(line_break)
+        f.write(line_break)
         f.flush()
         
     @property
@@ -325,7 +335,8 @@ class WARCReader:
         version_line = fileobj.readline()
         if not version_line:
             return None
-            
+        if isinstance(version_line, bytes):
+            version_line = version_line.decode('utf-8')
         m = self.RE_VERSION.match(version_line)
         if not m:
             raise IOError("Bad version line: %r" % version_line)
@@ -336,6 +347,8 @@ class WARCReader:
         headers = {}
         while True:
             line = fileobj.readline()
+            if isinstance(line, bytes):
+                line = line.decode('utf-8')
             if line == "\r\n": # end of headers
                 break
             m = self.RE_HEADER.match(line)

@@ -24,18 +24,19 @@ class GzipFile(BaseGzipFile):
     """
     def __init__(self, filename=None, mode=None, 
                  compresslevel=9, fileobj=None):
-        BaseGzipFile.__init__(self, 
-            filename=filename, 
+        BaseGzipFile.__init__(self,
+            filename=filename,
             mode=mode,
             compresslevel=compresslevel,
             fileobj=fileobj)
-            
+
         if self.mode == WRITE:
             # Indicates the start of a new member if value is True.
             # The BaseGzipFile constructor already wrote the header for new 
             # member, so marking as False.
             self._new_member = False
-            
+        if not hasattr(self, '_new_member'):
+            self._new_member = True
         # When _member_lock is True, only one member in gzip file is read
         self._member_lock = False
     
@@ -49,7 +50,7 @@ class GzipFile(BaseGzipFile):
         self.fileobj.write(self.compress.flush())
         write32u(self.fileobj, self.crc)
         # self.size may exceed 2GB, or even 4GB
-        write32u(self.fileobj, self.size & 0xffffffffL)
+        write32u(self.fileobj, self.size & 0xffffffff)
         self.size = 0
         self.compress = zlib.compressobj(9,
                                          zlib.DEFLATED,
@@ -95,6 +96,8 @@ class GzipFile(BaseGzipFile):
     def read_member(self):
         """Returns a file-like object to read one member from the gzip file.
         """
+        if hasattr(self, '_buffer'):
+            return self._buffer
         if self._member_lock is False:
             self._member_lock = True
 

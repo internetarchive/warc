@@ -7,7 +7,10 @@ This file is part of warc
 :copyright: (c) 2012 Internet Archive
 """
 
-from UserDict import DictMixin
+try:
+    from UserDict import DictMixin
+except ImportError:
+    from collections import MutableMapping as DictMixin
 
 class CaseInsensitiveDict(DictMixin):
     """Almost like a dictionary, but keys are case-insensitive.
@@ -23,9 +26,9 @@ class CaseInsensitiveDict(DictMixin):
         >>> d.keys()
         ["foo", "bar"]
     """
-    def __init__(self, mapping=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         self._d = {}
-        self.update(mapping, **kwargs)
+        self.update(*args, **kwargs)
         
     def __setitem__(self, name, value):
         self._d[name.lower()] = value
@@ -38,7 +41,14 @@ class CaseInsensitiveDict(DictMixin):
         
     def __eq__(self, other):
         return isinstance(other, CaseInsensitiveDict) and other._d == self._d
-        
+
+    def __len__(self):
+        return len(self._d)
+
+    def __iter__(self):
+        for i in self._d:
+            yield i
+
     def keys(self):
         return self._d.keys()
 

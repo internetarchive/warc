@@ -1,6 +1,9 @@
 from ..warc import WARCReader, WARCHeader, WARCRecord, WARCFile
 
-from StringIO import StringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 class TestWARCHeader:
     def test_attrs(self):
@@ -99,13 +102,14 @@ class TestWarcFile:
 
     def test_write_gz(self):
         """Test writing multiple member gzip file."""
-        buffer = StringIO()
-        f = WARCFile(fileobj=buffer, mode="w", compress=True)
+        from io import BytesIO
+        buffer = BytesIO()
+        f = WARCFile(fileobj=buffer, mode="wb", compress=True)
         for i in range(10):
-            record = WARCRecord(payload="hello %d" % i)
+            record = WARCRecord(payload=b"hello %d" % i)
             f.write_record(record)
 
-        GZIP_MAGIC_NUMBER = '\037\213'
+        GZIP_MAGIC_NUMBER = b'\037\213'
         assert buffer.getvalue().count(GZIP_MAGIC_NUMBER) == 10
 
     def test_long_header(self):
