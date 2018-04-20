@@ -11,6 +11,7 @@ import re
 import StringIO
 import warnings
 
+from . import gzip2
 from .utils import CaseInsensitiveDict
 
 ARC1_HEADER_RE = re.compile('(?P<url>\S*)\s(?P<ip_address>\S*)\s(?P<date>\S*)\s(?P<content_type>\S*)\s(?P<length>\S*)')
@@ -206,7 +207,7 @@ class ARCRecord(object):
         
     
 class ARCFile(object):
-    def __init__(self, filename=None, mode=None, fileobj=None, version = None, file_headers = {}):
+    def __init__(self, filename=None, mode=None, fileobj=None, compress=None, version = None, file_headers = {}):
         """
         Initialises a file like object that can be used to read or
         write Arc files. Works for both version 1 or version 2.
@@ -251,6 +252,13 @@ class ARCFile(object):
         """
         if fileobj is None:
             fileobj = __builtin__.open(filename, mode or "rb")
+            mode = fileobj.mode
+        # initiaize compress based on filename, if not already specified
+        if compress is None and filename and filename.endswith(".gz"):
+            compress = True
+        
+        if compress:
+            fileobj = gzip2.GzipFile(fileobj=fileobj, mode=mode)
         self.fileobj = fileobj
 
         if version != None and int(version) not in (1, 2):
