@@ -98,6 +98,19 @@ class GzipFile(BaseGzipFile):
         if self._member_lock is False:
             self._member_lock = True
 
+        if not self._new_member:
+            # the reader is in one of two possible states:
+            #  1. reached EOF
+            #  2. reached exactly the end of a Gzip member but not yet EOF
+            # Try to read 10 bytes (footer and Gzip magic number) to either
+            #  - trigger an EOFError or
+            #  - start the next member which also sets the "new member" state.
+            try:
+                BaseGzipFile._read(self, 10)
+                assert self._new_member is True
+            except EOFError:
+                return None
+
         if self._new_member:
             try:
                 # Read one byte to move to the next member
